@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $update->bind_param("si", $category_name, $category_id);
     $update->execute();
 
-    header("Location: dashboard.php?success=updated");
+    header("Location: dashboard_category.php?success=updated");
     exit;
 }
 ?>

@@ -1,196 +1,343 @@
-Dashboard.php
 <?php
 session_start();
-include 'db.php';
 
+// Cek apakah user sudah login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
-    exit;
+    exit();
 }
 
-$user_id = $_SESSION['user_id'];
+include 'db.php';
 
-$stmt = $conn->prepare("SELECT * FROM categories WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
+// Ambil data user dari database
+$stmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
+$stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $result = $stmt->get_result();
-?>
+$user = $result->fetch_assoc();
 
-<?php
-include 'db.php';
-$songs = $conn->query("SELECT * FROM songs ORDER BY uploaded_at DESC");
+if (!$user) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+$username = htmlspecialchars($user['username']);
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
-    <title>Kategori</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Game Alkitab</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
-     <style>
-    @keyframes gradientMove {
-      0% {
-        background-position: 0% 50%;
-      }
-      100% {
-        background-position: 100% 50%;
-      }
-    }
-
-    .animated-gradient-text {
-      background: linear-gradient(270deg, #f5af19, #f12711, #f5af19);
-      background-size: 300% 300%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: gradientMove 4s linear infinite;
-    }
-
-    .gradient-text {
-     background: linear-gradient(to left, #1F1C18, #8E0E00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
-    }
-  </style>
-  
-</head>
-
-<body class="relative h-screen">
-    <!-- Background Pattern -->
-    <div class="absolute inset-0 -z-10 h-full w-full pointer-events-none bg-[#1e1e1e] bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
-
-
-<div class="relative z-10 w-full h-full p-6">
-            <div class=" p-6 rounded shadow w-full h-full">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-6xl font-bold animated-gradient-text">
-                        KATEGORI
-                    </h1>
-                    <div class="flex items-center space-x-4">
-                        <!-- Tombol tambah -->
-                       <button onclick="document.getElementById('modal').classList.remove('hidden')" 
-                                class="rounded-lg px-2 py-1 font-black bg-sky-600 text-slate-900 hover:bg-sky-500 font-extrabold">
-                            <svg xmlns="http://www.w3.org/2000/svg" 
-                                class="h-6 w-6 inline-block font-black"  
-                                fill="none" 
-                                viewBox="0 0 24 24" 
-                                stroke="currentColor" 
-                                stroke-width="3"> <!-- Ketebalan stroke ditingkatkan -->
-                                <path stroke-linecap="round" 
-                                    stroke-linejoin="round" 
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                        </button>
-
-                        <!-- <button nclick="document.getElementById('modal').classList.remove('hidden')" class="rounded-lg px-6 py-3 font-medium bg-sky-400 text-slate-900 hover:bg-sky-300">
-                            +
-                    </button> -->
-                        <span class=" font-semibold text-2xl animated-gradient-text">
-                            <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
-                        </span>
-
-                        <a href="logout.php" class="animated-gradient-text text-2xl hover:underline font-semibold">
-                            Keluar
-                        </a>
-                    </div>
-                </div>
-
-                <?php if (isset($_GET['success']) && $_GET['success'] === 'deleted'): ?>
-                    <div id="notif" class="mb-4 p-3 bg-green-200 text-green-800 rounded">Kategori berhasil dihapus.</div>
-                    <script>
-                        setTimeout(() => document.getElementById('notif')?.remove(), 2000);
-                    </script>
-                <?php endif; ?>
-
-                <?php if (isset($_GET['success']) && $_GET['success'] === 'updated'): ?>
-                    <div id="notif" class="mb-4 p-3 bg-yellow-200 text-yellow-800 rounded">Kategori berhasil diperbarui.</div>
-                    <script>
-                        setTimeout(() => document.getElementById('notif')?.remove(), 2000);
-                    </script>
-                <?php endif; ?>
-
-                <!-- Modal Tambah -->
-                <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                    <div class="bg-white p-6 rounded shadow-md w-full max-w-sm">
-                        <h2 class="text-xl font-semibold mb-4">Tambah Kategori</h2>
-                        <form action="add_category.php" method="POST">
-                            <input type="text" name="category_name" placeholder="Nama Kategori" required class="w-full px-3 py-2 border rounded mb-4">
-                            <div class="flex justify-end gap-2">
-                                <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
-                                    Batal
-                                </button>
-                                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                    Simpan
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Modal Edit -->
-                <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                    <div class="bg-white p-6 rounded shadow-md w-full max-w-sm">
-                        <h2 class="text-xl font-semibold mb-4">Edit Kategori</h2>
-                        <form action="edit_category.php" method="POST">
-                            <input type="hidden" name="category_id" id="editCategoryId">
-                            <input type="text" name="category_name" id="editCategoryName" required class="w-full px-3 py-2 border rounded mb-4">
-                            <div class="flex justify-end gap-2">
-                                <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
-                                    Batal
-                                </button>
-                                <button type="submit" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
-                                    Simpan Perubahan
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Grid Kategori -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
-                    <?php if ($result->num_rows > 0): ?>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                            <div class="bg-white p-4 border rounded shadow flex flex-col justify-between">
-                                <!-- Kumpulan kategori -->
-                                <div class="flex justify-between items-start">
-                                    <a href="category.php?id=<?= $row['id'] ?>" class="text-2xl font-bold hover:no-underline break-words text-cyan-500">
-                                       <?= htmlspecialchars($row['name']) ?>
-                                    </a>
-
-                                    <div class="flex items-center space-x-2">
-                                        <!-- Edit -->
-                                        <button onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>')" class="text-yellow-500 hover:text-yellow-700" title="Edit">✏️</button>
-                                        <!-- Delete -->
-                                        <form action="delete_category.php" method="POST" onsubmit="return confirm('Yakin ingin menghapus kategori ini?');">
-                                            <input type="hidden" name="category_id" value="<?= $row['id'] ?>">
-                                            <button type="submit" class="text-red-500 hover:text-red-700" title="Hapus">🗑️</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <p class="text-gray-500">Tambahkan satu untuk memulai.</p>
-                    <?php endif; ?>
-                </div>
-
-                <!-- <a href="logout.php" class="block mt-10 text-red-500 hover:underline text-center">Logout</a> -->
-            </div>
-        </div>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
-        function openEditModal(id, name) {
-            document.getElementById('editCategoryId').value = id;
-            document.getElementById('editCategoryName').value = name;
-            document.getElementById('editModal').classList.remove('hidden');
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'montserrat': ['Montserrat', 'sans-serif'],
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+                            '50%': { transform: 'translateY(-10px) rotate(3deg)' },
+                        }
+                    }
+                }
+            }
         }
     </script>
+    <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@300;600&display=swap');
+        
+        .game-card {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+        }
+        .game-card:hover {
+            transform: translateY(-5px) scale(1.02);
+        }
+        
+        /* Animasi tombol musik */
+        .music-btn {
+            transition: all 0.3s ease;
+        }
+        .music-btn:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="font-poppins bg-gradient-to-br from-blue-900 to-purple-900 text-white min-h-screen">
+    <audio id="backgroundMusic"></audio> 
+    
+    <nav class="bg-white bg-opacity-10 backdrop-blur-md py-4 px-6 shadow-lg fixed w-full z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-bible text-2xl text-yellow-400"></i>
+                <span class="font-montserrat font-bold text-xl">Petualangan Iman</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="musicToggle" class="music-btn bg-white bg-opacity-20 p-2 rounded-full">
+                    <i class="fas fa-music text-lg"></i>
+                </button>
+                <span class="hidden sm:inline">Selamat datang, <span class="font-semibold text-yellow-400"><?= $username ?></span></span>
+                <a href="logout.php" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full text-sm font-semibold transition">Logout</a>
+            </div>
+        </div>
+    </nav>
 
+    <main class="pt-24 pb-12 px-6 max-w-6xl mx-auto">
+        <section class="mb-12 text-center">
+            <h1 class="font-montserrat text-3xl md:text-4xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+                Pilih Menu
+            </h1>
+            <p class="max-w-2xl mx-auto text-lg opacity-90">
+                Temukan berbagai permainan seru dan fitur lainnya
+            </p>
+        </section>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <a href="all_games.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-gamepad text-2xl text-white"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Semua Game</h3>
+                    <p class="text-sm opacity-80">Mainkan semua game yang tersedia</p>
+                </div>
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Jelajahi Semua →
+                </div>
+            </a>
 
+            <a href="quiz.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-yellow-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-puzzle-piece text-2xl text-yellow-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Puzzle Kata</h3>
+                    <p class="text-sm opacity-80">Susun potongan ayat Alkitab menjadi utuh kembali</p>
+                </div>
+                <div class="bg-yellow-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="matching.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-blue-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-object-group text-2xl text-blue-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Cocokkan Ayat</h3>
+                    <p class="text-sm opacity-80">Pasangkan ayat dengan kitab dan pasalnya</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="buzzer.html" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-red-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-bell text-2xl text-red-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Tombol Buzzer</h3>
+                    <p class="text-sm opacity-80">Lomba cepat tekan buzzer untuk menjawab</p>
+                </div>
+                <div class="bg-red-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="scratch.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-green-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-qrcode text-2xl text-green-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Scratch Alkitab</h3>
+                    <p class="text-sm opacity-80">Gores untuk menemukan ayat tersembunyi</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="dashboard_category.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-purple-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-question-circle text-2xl text-purple-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Kuis Alkitab</h3>
+                    <p class="text-sm opacity-80">Jawab pertanyaan seputar Alkitab</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="wordsearch.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-red-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-search text-2xl text-red-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Cari Kata</h3>
+                    <p class="text-sm opacity-80">Temukan kata-kata Alkitab dalam grid</p>
+                </div>
+                <div class="bg-red-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="memory.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-pink-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-brain text-2xl text-pink-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Game Ingatan</h3>
+                    <p class="text-sm opacity-80">Temukan pasangan yang cocok</p>
+                </div>
+                <div class="bg-pink-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+            <a href="survival.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40 transition-all duration-300 hover:scale-[1.02]">
+                <div class="p-6">
+                    <div class="bg-red-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-skull-crossbones text-2xl text-red-400"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Survival Quiz</h3>
+                    <p class="text-sm opacity-80">Bertahanlah sampai akhir dengan menjawab benar</p>
+                </div>
+                <div class="bg-red-400 bg-opacity-20 px-4 py-2 text-sm font-semibold flex items-center justify-center">
+                    <span>Mainkan Sekarang</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <a href="dragdrop.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40 transition-all duration-300 hover:scale-[1.02]">
+                <div class="p-6">
+                    <div class="bg-purple-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-arrows-alt text-2xl text-purple-400"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Drag & Drop Quiz</h3>
+                    <p class="text-sm opacity-80">Seret dan lepas jawaban ke area yang benar</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-20 px-4 py-2 text-sm font-semibold flex items-center justify-center">
+                    <span>Mainkan Sekarang</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <a href="kelompok.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-indigo-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-users text-2xl text-indigo-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Pilih Kelompok</h3>
+                    <p class="text-sm opacity-80">Buat atau gabung kelompok permainan</p>
+                </div>
+                <div class="bg-indigo-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Akses Kelompok →
+                </div>
+            </a>
+
+            <a href="skor.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-amber-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-calculator text-2xl text-amber-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Hitung Skor</h3>
+                    <p class="text-sm opacity-80">Lihat dan hitung skor permainan</p>
+                </div>
+                <div class="bg-amber-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Lihat Skor →
+                </div>
+            </a>          
+        </div>
+
+    </main>
+
+    <footer class="bg-black bg-opacity-30 py-6 px-6">
+        <div class="max-w-6xl mx-auto text-center text-sm opacity-70">
+            <p>© 2025 Petualangan Iman - Game Alkitab Interaktif</p>
+            <p class="mt-2">"Tetapi carilah dahulu Kerajaan Allah dan kebenarannya, maka semuanya itu akan ditambahkan kepadamu." - Matius 6:33</p>
+        </div>
+    </footer>
+
+    <script>
+        // Sistem Musik Background
+        const musicPlayer = document.getElementById('backgroundMusic');
+        const musicToggle = document.getElementById('musicToggle');
+        let isMusicPlaying = false;
+        
+        // Playlist musik
+        const playlist = [
+            'music/Segala_Perkara.mp3',
+            'music/background2.mp3',
+            'music/background3.mp3'
+        ];
+        let currentTrack = 0;
+        
+        // Fungsi untuk memutar musik
+        function playMusic() {
+            if (playlist.length === 0) return;
+            
+            musicPlayer.src = playlist[currentTrack];
+            musicPlayer.load(); // Memuat ulang audio jika src berubah
+            musicPlayer.play()
+                .then(() => {
+                    isMusicPlaying = true;
+                    musicToggle.innerHTML = '<i class="fas fa-volume-up text-lg"></i>';
+                })
+                .catch(error => {
+                    console.error("Autoplay prevented:", error);
+                    // Tampilkan UI untuk interaksi user
+                });
+        }
+        
+        // Fungsi untuk mengganti track
+        function nextTrack() {
+            currentTrack = (currentTrack + 1) % playlist.length;
+            playMusic();
+        }
+        
+        // Event listener untuk tombol musik
+        musicToggle.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                musicPlayer.pause();
+                musicToggle.innerHTML = '<i class="fas fa-volume-mute text-lg"></i>';
+            } else {
+                playMusic();
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
+        
+        // Ketika track selesai, mainkan track berikutnya
+        // Pastikan atribut 'loop' tidak ada pada tag <audio> agar event 'ended' bisa terpicu
+        musicPlayer.addEventListener('ended', nextTrack);
+        
+        // Coba mulai musik secara otomatis (mungkin membutuhkan interaksi user)
+        // Disarankan untuk memulai musik setelah ada interaksi user, seperti klik tombol.
+        // Ini adalah fallback jika browser memblokir autoplay.
+        document.addEventListener('DOMContentLoaded', () => {
+             // Coba putar musik saat halaman dimuat, ini mungkin diblokir browser
+            playMusic(); 
+        });
+
+        // Event listener untuk memastikan musik diputar setelah interaksi user pertama (jika autoplay diblokir)
+        document.addEventListener('click', () => {
+            if (!isMusicPlaying && playlist.length > 0) {
+                playMusic();
+            }
+        }, { once: true }); // Hanya jalankan sekali setelah klik pertama
+    </script>
 </body>
-
 </html>

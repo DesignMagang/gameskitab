@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Pastikan redirect kembali agar halaman fresh dengan data baru
-    header("Location: dashboard.php");
+    header("Location: dashboard_category.php");
     exit;
 }
 ?>

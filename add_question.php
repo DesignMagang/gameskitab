@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
     $category_id = intval($_POST['category_id']);
     $question_text = trim($_POST['question_text']);
+    $answer = trim($_POST['answer']); // ⬅️ ambil nilai jawaban
 
     // Cek kepemilikan kategori
     $cek = $conn->query("SELECT * FROM categories WHERE id = $category_id AND user_id = $user_id");
@@ -24,9 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $row = $result->fetch_assoc();
         $next_number = $row['max_num'] + 1;
 
-        // Masukkan soal
-        $stmt = $conn->prepare("INSERT INTO questions (category_id, question_text, question_number) VALUES (?, ?, ?)");
-        $stmt->bind_param("isi", $category_id, $question_text, $next_number);
+        // Masukkan soal dan jawaban
+        $stmt = $conn->prepare("INSERT INTO questions (category_id, question_text, answer, question_number) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("issi", $category_id, $question_text, $answer, $next_number);
         $stmt->execute();
     }
 }

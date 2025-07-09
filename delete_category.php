@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $del->bind_param("i", $category_id);
     $del->execute();
 
-    header("Location: dashboard.php?success=deleted");
+    header("Location: dashboard_category.php?success=deleted");
     exit;
 }
 ?>
