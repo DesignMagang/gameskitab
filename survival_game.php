@@ -88,14 +88,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['question_text'])) {
         $questionOrder = ($lastOrder['last_order'] ?? 0) + 1;
         
         // Simpan ke database
-        $stmt = $conn->prepare("INSERT INTO survival_questions 
-                               (session_id, round_number, question_order, question_text, 
-                               question_type, correct_answer, option_a, option_b, option_c, option_d) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        // $stmt = $conn->prepare("INSERT INTO survival_questions 
+        //                        (session_id, round_number, question_order, question_text, 
+        //                        question_type, correct_answer, option_a, option_b, option_c, option_d) 
+        //                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-                               $stmt->bind_param("iiisssssss", $sessionId, $roundNumber, $questionOrder, 
-                         $questionText, $questionType, $correctAnswer, 
-                         $optionA, $optionB, $optionC, $optionD);
+        //                        $stmt->bind_param("iiisssssss", $sessionId, $roundNumber, $questionOrder, 
+        //                  $questionText, $questionType, $correctAnswer, 
+        //                  $optionA, $optionB, $optionC, $optionD);
         
         if ($stmt->execute()) {
             $_SESSION['success'] = "Pertanyaan berhasil ditambahkan ke Ronde $roundNumber!";
