@@ -2,9 +2,9 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buzzer Game</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buzzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <style>
@@ -86,30 +86,18 @@
 
 <body class="min-h-screen flex flex-col items-center justify-center p-4 text-white">
     <div class="card rounded-2xl p-6 w-full max-w-md relative overflow-hidden">
-        <!-- Efek latar belakang -->
         <div class="absolute inset-0 overflow-hidden">
             <div class="absolute -top-20 -left-20 w-40 h-40 bg-blue-500 rounded-full filter blur-3xl opacity-20"></div>
             <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-red-500 rounded-full filter blur-3xl opacity-20"></div>
         </div>
 
-
         <div class="relative z-10">
-            <!-- Tambahkan di dalam div card, setelah pembukaan tag <div class="relative z-10"> -->
-            <div class="mb-4">
-                <a href="dashboard.php" class="inline-flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-white">
-                    <i class="fas fa-arrow-left mr-2"></i> Kembali ke Dashboard
-                </a>
-            </div>
-            <h1 class="text-3xl font-bold text-center mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-200">
-                BUZZER GAME
-            </h1>
-
-            <!-- Container tombol - vertikal di mobile, horizontal di desktop -->
+            <!-- Tombol BUZZER -->
             <div class="flex flex-col md:flex-row justify-center items-center gap-6 mb-8">
-                <button id="team1" onclick="pressBuzzer(1)" class="buzzer-btn rounded-full bg-blue-500 text-white font-bold text-lg hover:bg-blue-600 pulse glow">
+                <button id="team1" onpointerdown="pressBuzzer(1)" class="buzzer-btn rounded-full bg-blue-500 text-white font-bold text-lg hover:bg-blue-600 pulse glow">
                     TIM A
                 </button>
-                <button id="team2" onclick="pressBuzzer(2)" class="buzzer-btn rounded-full bg-red-500 text-white font-bold text-lg hover:bg-red-600 pulse glow-red">
+                <button id="team2" onpointerdown="pressBuzzer(2)" class="buzzer-btn rounded-full bg-red-500 text-white font-bold text-lg hover:bg-red-600 pulse glow-red">
                     TIM B
                 </button>
             </div>
@@ -121,42 +109,31 @@
                 <div id="winner" class="winner-display rounded-lg p-3 mt-2 hidden"></div>
             </div>
 
-            <div class="flex justify-center gap-4">
+            <div class="flex justify-center">
                 <button onclick="resetBuzzer()" class="px-5 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all flex items-center gap-2">
                     <i class="fas fa-sync-alt"></i> Reset
                 </button>
-                <button onclick="location.reload()" class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-500 hover:to-blue-600 transition-all flex items-center gap-2">
-                    <i class="fas fa-redo"></i> Refresh
-                </button>
             </div>
         </div>
-
-    </div>
     </div>
 
     <audio id="buzzerSound"></audio>
-
-    <!-- Font Awesome untuk ikon -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
     <script>
         let buzzerActive = true;
         let winner = null;
 
-        // Fungsi tekan buzzer
         function pressBuzzer(team) {
             if (!buzzerActive || winner) return;
 
             winner = team;
             buzzerActive = false;
 
-            // Mainkan suara
             const sound = document.getElementById('buzzerSound');
             sound.src = 'get_sound.php?team=' + team;
             sound.currentTime = 0;
             sound.play();
 
-            // Update tampilan
             document.getElementById('status').innerHTML = '<i class="fas fa-lock mr-2"></i> Status: Terkunci';
             document.getElementById('status').className = 'text-lg font-semibold text-red-400 mb-2';
 
@@ -166,21 +143,16 @@
                     <i class="fas fa-trophy text-yellow-400 text-2xl"></i>
                     <span class="font-bold">TIM ${team === 1 ? 'A' : 'B'} duluan Bjirrr!</span>
                 </div>
-                <div class="text-sm mt-1 opacity-80">${new Date().toLocaleTimeString()}</div>
             `;
             winnerDiv.classList.remove('hidden');
 
-            // Nonaktifkan tombol dan hilangkan animasi
             document.querySelectorAll('.buzzer-btn').forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('pulse', 'glow', 'glow-red');
             });
 
-            // Highlight tombol pemenang
-            const winnerBtn = document.getElementById(`team${team}`);
-            winnerBtn.classList.add('ring-4', 'ring-offset-2', 'ring-white');
+            document.getElementById(`team${team}`).classList.add('ring-4', 'ring-offset-2', 'ring-white');
 
-            // Kirim data ke server
             fetch('save_buzz.php', {
                 method: 'POST',
                 headers: {
@@ -190,7 +162,6 @@
             });
         }
 
-        // Fungsi reset
         function resetBuzzer() {
             fetch('reset_buzzer.php')
                 .then(response => response.json())
@@ -208,7 +179,6 @@
                             btn.classList.add('pulse');
                             btn.classList.remove('ring-4', 'ring-offset-2', 'ring-white');
 
-                            // Tambahkan glow sesuai tim
                             if (btn.id === 'team1') {
                                 btn.classList.add('glow');
                             } else {
@@ -219,13 +189,12 @@
                 });
         }
 
-        // Cek status buzzer secara berkala
-        function checkBuzzerStatus() {
+        // Cek status setiap 1 detik
+        setInterval(() => {
             fetch('check_status.php')
                 .then(response => response.json())
                 .then(data => {
                     if (data.active === false && buzzerActive) {
-                        // Buzzer dikunci dari sisi lain
                         buzzerActive = false;
                         document.getElementById('status').innerHTML = '<i class="fas fa-lock mr-2"></i> Status: Terkunci';
                         document.getElementById('status').className = 'text-lg font-semibold text-red-400 mb-2';
@@ -235,10 +204,7 @@
                         });
                     }
                 });
-        }
-
-        // Cek status setiap 1 detik
-        setInterval(checkBuzzerStatus, 1000);
+        }, 1000);
     </script>
 </body>
 

@@ -64,16 +64,7 @@ try {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(234, 88, 12, 0.4);
         }
-        .active-auto-refresh-btn { /* Gaya baru untuk tombol auto-refresh aktif */
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); /* Blue gradient */
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-        }
-        .active-auto-refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(29, 78, 216, 0.4);
-        }
-        .back-btn { /* Digunakan juga untuk tombol musik */
+        .back-btn {
             background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); /* Blue gradient */
             transition: all 0.3s ease;
             letter-spacing: 0.5px;
@@ -82,18 +73,17 @@ try {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(29, 78, 216, 0.4);
         }
-        .music-toggle-btn { /* Gaya untuk tombol musik */
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); /* Green gradient */
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-        }
-        .music-toggle-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(22, 163, 74, 0.4);
-        }
         .trophy-icon {
             color: #FFD700; /* Gold */
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .trophy-icon.silver {
+            color: #C0C0C0; /* Silver */
+            text-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
+        }
+        .trophy-icon.bronze {
+            color: #CD7F32; /* Bronze */
+            text-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
         }
         .loading-spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
@@ -107,23 +97,28 @@ try {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        /* Responsifitas Tabel */
-        .table-wrapper {
-            overflow-x: auto; /* Memungkinkan tabel di-scroll secara horizontal */
-            -webkit-overflow-scrolling: touch; /* Untuk smooth scrolling di iOS */
+        .delete-btn {
+            background-color: #ef4444; /* Red-500 */
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: background-color 0.2s ease;
         }
-        /* Opsional: Styling untuk membuat kolom tertentu tetap terlihat di mobile */
-        /* Contoh: jika Anda ingin kolom Nama Tim selalu terlihat */
-        /* @media (max-width: 768px) {
-            .min-w-full th:nth-child(2),
-            .min-w-full td:nth-child(2) {
-                position: sticky;
-                left: 0;
-                background-color: inherit; // Sesuaikan dengan warna background baris
-                z-index: 1;
-            }
-        } */
+        .delete-btn:hover {
+            background-color: #dc2626; /* Red-600 */
+        }
+        .round-table-container {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #334155; /* slate-700 */
+        }
+        .round-table-container h3 {
+            color: #93c5fd; /* blue-300 */
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body class="relative flex flex-col items-center justify-center min-h-screen px-4 bg-cover bg-center pb-12">
@@ -138,12 +133,9 @@ try {
         </div>
 
         <div class="container-results p-6 rounded-2xl border border-slate-700/50 backdrop-blur-sm">
-            <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
-                <h2 class="text-2xl font-bold text-white">Peringkat Tim</h2>
-                <div class="flex flex-wrap gap-3">
-                    <button id="toggleMusicBtn" class="py-2 px-4 music-toggle-btn text-white font-semibold rounded-lg flex items-center">
-                        <i class="fas fa-music mr-2"></i> Play Music
-                    </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white" id="mainTableTitle">Peringkat Akhir Tim</h2>
+                <div class="flex space-x-3">
                     <button id="refreshResultsBtn" class="py-2 px-4 refresh-btn text-white font-semibold rounded-lg flex items-center">
                         <i class="fas fa-sync-alt mr-2"></i> Auto-Refresh
                     </button>
@@ -158,32 +150,30 @@ try {
                 <p class="text-slate-400 ml-3">Memuat peringkat...</p>
             </div>
 
-            <div id="resultsTableContainer" class="table-wrapper">
+            <div id="resultsTableContainer">
                 </div>
             
             <div id="noResultsMessage" class="hidden text-center text-slate-400 py-8">
                 Belum ada hasil untuk sesi ini.
             </div>
 
-            <audio id="backgroundMusic" loop>
-                <source src="assets/music/background_music.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
+            <div id="roundResultsContainer">
+                </div>
         </div>
     </div>
 
     <script>
         const sessionId = "<?= $sessionId ?>";
         const resultsTableContainer = document.getElementById('resultsTableContainer');
+        const roundResultsContainer = document.getElementById('roundResultsContainer'); // New container for round tables
         const loadingSpinner = document.getElementById('loadingSpinner');
         const noResultsMessage = document.getElementById('noResultsMessage');
         const refreshResultsBtn = document.getElementById('refreshResultsBtn');
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const toggleMusicBtn = document.getElementById('toggleMusicBtn');
+        const mainTableTitle = document.getElementById('mainTableTitle');
 
         let refreshIntervalId; // To store the interval ID for auto-refresh
-        let isAutoRefreshActive = false; // Status auto-refresh
-        let isMusicPlaying = false; // Status musik
+        let isAutoRefreshActive = false; // Default: mati
+
 
         // Function to format time from seconds to MM:SS
         function formatTime(seconds) {
@@ -195,6 +185,7 @@ try {
         async function fetchAndDisplayResults(shuffle = false) {
             loadingSpinner.classList.remove('hidden');
             resultsTableContainer.innerHTML = '';
+            roundResultsContainer.innerHTML = ''; // Clear round tables
             noResultsMessage.classList.add('hidden');
 
             try {
@@ -204,62 +195,176 @@ try {
                 loadingSpinner.classList.add('hidden');
 
                 if (data.success && data.results.length > 0) {
-                    let results = data.results;
+                    let allResults = data.results;
 
                     if (shuffle) {
-                        // Shuffle the array of results for display purposes
-                        shuffleArray(results);
+                        shuffleArray(allResults);
                     } else {
-                        // Default sort: By time_taken (ascending), then by submission_time (ascending)
-                        results.sort((a, b) => {
+                        // Keep the overall results sorted by time_taken for 'Final_Score' display
+                        allResults.sort((a, b) => {
+                            // Sort 'Final_Score' entries first, then other rounds
+                            const isAFinal = a.round_number === 'Final_Score';
+                            const isBFinal = b.round_number === 'Final_Score';
+
+                            if (isAFinal && !isBFinal) return -1;
+                            if (!isAFinal && isBFinal) return 1;
+
+                            // If both are Final_Score or both are not, sort by time_taken then submission_time
                             if (a.time_taken !== b.time_taken) {
                                 return a.time_taken - b.time_taken;
                             }
-                            // Fallback to submission time if times are equal
                             return new Date(a.submission_time) - new Date(b.submission_time);
                         });
                     }
 
-                    let tableHtml = `
-                        <table class="min-w-full bg-slate-800 rounded-lg overflow-hidden shadow-lg">
-                            <thead class="bg-slate-700">
-                                <tr>
-                                    <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Peringkat</th>
-                                    <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Nama Tim</th>
-                                    <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Ronde</th>
-                                    <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu</th>
-                                    <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu Submit</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-700">
-                    `;
+                    // Separate final scores from individual round scores
+                    const finalScores = allResults.filter(result => result.round_number === 'Final_Score');
+                    const roundScores = allResults.filter(result => result.round_number !== 'Final_Score');
 
-                    results.forEach((result, index) => {
-                        const rank = index + 1;
-                        // Ikon piala hanya untuk peringkat 1 (karena Final_Score sudah difilter)
-                        const trophyIcon = rank === 1 ? '<i class="fas fa-trophy trophy-icon mr-2"></i>' : '';
-                        const rowClass = 'bg-slate-900/30'; // Selalu gunakan kelas ini untuk ronde biasa
-
-                        tableHtml += `
-                            <tr class="${rowClass} hover:bg-slate-700/50 transition-colors duration-200">
-                                <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
-                                    ${trophyIcon} ${rank}
-                                </td>
-                                <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${result.team_name}</td>
-                                <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
-                                    Ronde ${result.round_number}
-                                </td>
-                                <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${formatTime(result.time_taken)}</td>
-                                <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${new Date(result.submission_time).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                            </tr>
+                    // Display Final Scores
+                    if (finalScores.length > 0) {
+                        mainTableTitle.textContent = 'Peringkat Akhir Tim'; // Ensure title is correct
+                        let finalTableHtml = `
+                            <table class="min-w-full bg-slate-800 rounded-lg overflow-hidden shadow-lg">
+                                <thead class="bg-slate-700">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Peringkat</th>
+                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Nama Tim</th>
+                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu</th>
+                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu Submit</th>
+                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-700">
                         `;
+
+                        finalScores.forEach((result, index) => {
+                            const rank = index + 1;
+                            let trophyIcon = '';
+                            if (rank === 1) {
+                                trophyIcon = '<i class="fas fa-trophy trophy-icon mr-2"></i>';
+                            } else if (rank === 2) {
+                                trophyIcon = '<i class="fas fa-trophy trophy-icon silver mr-2"></i>';
+                            } else if (rank === 3) {
+                                trophyIcon = '<i class="fas fa-trophy trophy-icon bronze mr-2"></i>';
+                            }
+                            
+                            finalTableHtml += `
+                                <tr class="bg-blue-900/40 font-semibold hover:bg-slate-700/50 transition-colors duration-200">
+                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
+                                        ${trophyIcon} ${rank}
+                                    </td>
+                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${result.team_name}</td>
+                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${formatTime(result.time_taken)}</td>
+                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${new Date(result.submission_time).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
+                                        <button class="delete-btn" data-id="${result.id}">
+                                            <i class="fas fa-trash"></i> Hapus
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        finalTableHtml += `
+                                </tbody>
+                            </table>
+                        `;
+                        resultsTableContainer.innerHTML = finalTableHtml;
+                    } else {
+                        resultsTableContainer.innerHTML = `<p class="text-slate-400 text-center py-4">Belum ada peringkat akhir untuk sesi ini.</p>`;
+                    }
+
+                    // Group and display individual round scores
+                    const groupedRoundScores = {};
+                    roundScores.forEach(result => {
+                        if (!groupedRoundScores[result.round_number]) {
+                            groupedRoundScores[result.round_number] = [];
+                        }
+                        groupedRoundScores[result.round_number].push(result);
                     });
 
-                    tableHtml += `
-                            </tbody>
-                        </table>
-                    `;
-                    resultsTableContainer.innerHTML = tableHtml;
+                    const sortedRoundNumbers = Object.keys(groupedRoundScores).sort((a, b) => parseInt(a) - parseInt(b));
+
+                    sortedRoundNumbers.forEach(roundNum => {
+                        const roundData = groupedRoundScores[roundNum];
+                        if (roundData.length > 0) {
+                            // Sort each round's data by time_taken then submission_time
+                            roundData.sort((a, b) => {
+                                if (a.time_taken !== b.time_taken) {
+                                    return a.time_taken - b.time_taken;
+                                }
+                                return new Date(a.submission_time) - new Date(b.submission_time);
+                            });
+
+                            let roundTableHtml = `
+                                <div class="round-table-container">
+                                    <h3 class="text-blue-300">Hasil Ronde ${roundNum}</h3>
+                                    <table class="min-w-full bg-slate-800 rounded-lg overflow-hidden shadow-lg">
+                                        <thead class="bg-slate-700">
+                                            <tr>
+                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Peringkat</th>
+                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Nama Tim</th>
+                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu</th>
+                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu Submit</th>
+                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-700">
+                            `;
+
+                            roundData.forEach((result, index) => {
+                                const rank = index + 1;
+                                let trophyIcon = '';
+                                if (rank === 1) {
+                                    trophyIcon = '<i class="fas fa-trophy trophy-icon mr-2"></i>';
+                                } else if (rank === 2) {
+                                    trophyIcon = '<i class="fas fa-trophy trophy-icon silver mr-2"></i>';
+                                } else if (rank === 3) {
+                                    trophyIcon = '<i class="fas fa-trophy trophy-icon bronze mr-2"></i>';
+                                }
+
+                                roundTableHtml += `
+                                    <tr class="bg-slate-900/30 hover:bg-slate-700/50 transition-colors duration-200">
+                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
+                                            ${trophyIcon} ${rank}
+                                        </td>
+                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${result.team_name}</td>
+                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${formatTime(result.time_taken)}</td>
+                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${new Date(result.submission_time).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
+                                            <button class="delete-btn" data-id="${result.id}">
+                                                <i class="fas fa-trash"></i> Hapus
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+
+                            roundTableHtml += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                            roundResultsContainer.insertAdjacentHTML('beforeend', roundTableHtml);
+                        }
+                    });
+
+                    // If no final scores and no round scores, show no results message
+                    if (finalScores.length === 0 && roundScores.length === 0) {
+                        noResultsMessage.classList.remove('hidden');
+                    } else {
+                        // Add event listeners for all delete buttons after all tables are rendered
+                        document.querySelectorAll('.delete-btn').forEach(button => {
+                            button.addEventListener('click', (event) => {
+                                const resultId = event.currentTarget.dataset.id;
+                                if (confirm('Apakah Anda yakin ingin menghapus hasil ini?')) {
+                                    deleteResult(resultId);
+                                }
+                            });
+                        });
+                    }
+
                 } else {
                     noResultsMessage.classList.remove('hidden');
                 }
@@ -267,6 +372,30 @@ try {
                 console.error('Error fetching results:', error);
                 loadingSpinner.classList.add('hidden');
                 resultsTableContainer.innerHTML = `<p class="text-red-400 text-center py-8">Gagal memuat hasil: ${error.message}</p>`;
+            }
+        }
+
+        // Function to delete a result
+        async function deleteResult(resultId) {
+            try {
+                const response = await fetch('delete_dragdrop_result.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: resultId })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Hasil berhasil dihapus!');
+                    fetchAndDisplayResults(false); // Refresh results after deletion
+                } else {
+                    alert('Gagal menghapus hasil: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting result:', error);
+                alert('Terjadi kesalahan saat menghapus hasil.');
             }
         }
 
@@ -280,16 +409,16 @@ try {
 
         // Auto-refresh functionality
         function startAutoRefresh(intervalSeconds) {
-            if (refreshIntervalId) {
+            if (refreshIntervalId) { // Clear existing interval if any
                 clearInterval(refreshIntervalId);
             }
             refreshIntervalId = setInterval(() => {
                 fetchAndDisplayResults(true); // Always shuffle on auto-refresh
             }, intervalSeconds * 1000);
             isAutoRefreshActive = true;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Auto-Refresh';
-            refreshResultsBtn.classList.remove('refresh-btn');
-            refreshResultsBtn.classList.add('active-auto-refresh-btn'); // Ganti kelas untuk warna aktif
+            refreshResultsBtn.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.classList.remove('refresh-btn'); // Hapus warna orange
+            refreshResultsBtn.classList.add('back-btn'); // Ganti dengan warna biru (atau warna lain yang sesuai)
             console.log(`Auto-refresh started every ${intervalSeconds} seconds.`);
         }
 
@@ -299,38 +428,16 @@ try {
                 refreshIntervalId = null;
             }
             isAutoRefreshActive = false;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Auto-Refresh';
-            refreshResultsBtn.classList.remove('active-auto-refresh-btn'); // Hapus kelas warna aktif
-            refreshResultsBtn.classList.add('refresh-btn'); // Kembalikan ke warna default
+            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.classList.remove('back-btn'); // Hapus warna biru
+            refreshResultsBtn.classList.add('refresh-btn'); // Ganti dengan warna orange
             console.log("Auto-refresh stopped.");
-        }
-
-        // Fungsi untuk toggle musik
-        function toggleMusic() {
-            if (isMusicPlaying) {
-                backgroundMusic.pause();
-                toggleMusicBtn.innerHTML = '<i class="fas fa-music mr-2"></i> Play Music';
-                toggleMusicBtn.classList.remove('back-btn'); // Hapus kelas biru jika ada
-                toggleMusicBtn.classList.add('music-toggle-btn'); // Kembali ke warna hijau
-                isMusicPlaying = false;
-            } else {
-                backgroundMusic.play().then(() => {
-                    toggleMusicBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause Music';
-                    toggleMusicBtn.classList.remove('music-toggle-btn'); // Hapus warna hijau
-                    toggleMusicBtn.classList.add('back-btn'); // Ganti ke warna biru saat aktif
-                    isMusicPlaying = true;
-                }).catch(error => {
-                    console.error("Error playing music:", error);
-                    alert("Gagal memutar musik. Beberapa browser membutuhkan interaksi pengguna sebelum memutar media.");
-                });
-            }
         }
 
         // Initial load of results
         document.addEventListener('DOMContentLoaded', () => {
             fetchAndDisplayResults(false); // Initial load, not shuffled
 
-            // Event listener untuk tombol Auto-Refresh
             refreshResultsBtn.addEventListener('click', () => {
                 if (isAutoRefreshActive) {
                     stopAutoRefresh();
@@ -339,17 +446,11 @@ try {
                     startAutoRefresh(5); // Aktifkan auto-refresh setiap 5 detik
                 }
             });
-
-            // Event listener untuk tombol musik
-            toggleMusicBtn.addEventListener('click', toggleMusic);
         });
 
-        // Stop auto-refresh and music when leaving the page
+        // Stop auto-refresh when leaving the page
         window.addEventListener('beforeunload', () => {
             stopAutoRefresh();
-            if (isMusicPlaying) {
-                backgroundMusic.pause();
-            }
         });
     </script>
 </body>

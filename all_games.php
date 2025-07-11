@@ -35,6 +35,17 @@ if ($survival_sessions_query) {
     error_log("Error fetching survival sessions: " . $conn->error);
 }
 
+// Ambil semua sesi dragdrop dari database
+$dragdrop_sessions_query = $conn->query("SELECT sessionid, session_name FROM dragdrop_sessions ORDER BY sessionid DESC");
+$dragdrop_sessions = [];
+if ($dragdrop_sessions_query) {
+    while ($row = $dragdrop_sessions_query->fetch_assoc()) {
+        $dragdrop_sessions[] = $row;
+    }
+} else {
+    error_log("Error fetching dragdrop sessions: " . $conn->error);
+}
+
 // Ambil semua sesi matching game yang dibuat oleh user ini
 $matchingSessions = [];
 $userId = $_SESSION['user_id']; // Pastikan $userId terdefinisi di sini
@@ -225,6 +236,27 @@ $stmtMatching->close();
                     </div>
                 </div>
             </a>
+
+            <?php if (!empty($dragdrop_sessions)): ?>
+                <?php foreach ($dragdrop_sessions as $session): ?>
+                    <a href="play_dragdrop.php?sessionid=<?= htmlspecialchars($session['sessionid']) ?>" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                        <div class="p-6">
+                            <div class="bg-blue-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                                <i class="fas fa-arrows-alt-h text-2xl text-blue-400"></i>
+                            </div>
+                            <h3 class="font-bold text-xl mb-2">Drag & Drop Game: <?= htmlspecialchars($session['session_name']) ?></h3>
+                            <p class="text-sm opacity-80 mb-4">Seret dan letakkan jawaban yang benar</p>
+                            <div class="flex justify-center">
+                                <span class="bg-blue-400 bg-opacity-20 text-blue-400 text-xs px-3 py-1 rounded-full">Teka-Teki</span>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-center text-gray-400 sm:col-span-2 lg:col-span-3 p-6">
+                    <p>Tidak ada sesi Drag & Drop Game yang tersedia saat ini.</p>
+                </div>
+            <?php endif; ?>
 
             <?php if (!empty($survival_sessions)): ?>
                 <?php foreach ($survival_sessions as $session): ?>

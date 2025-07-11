@@ -182,6 +182,20 @@ $username = htmlspecialchars($user['username']);
                 </div>
             </a>
 
+             <a href="quiz.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
+                <div class="p-6">
+                    <div class="bg-purple-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <i class="fas fa-question-circle text-2xl text-purple-400"></i>
+                    </div>
+                    <h3 class="font-montserrat font-bold text-xl mb-2">Kuis Alkitab 2</h3>
+                    <p class="text-sm opacity-80">Jawab pertanyaan seputar Alkitab</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-20 px-4 py-2 text-sm font-semibold">
+                    Mainkan Sekarang →
+                </div>
+            </a>
+
+
             <a href="wordsearch.php" class="game-card bg-white bg-opacity-10 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm border border-white border-opacity-20 hover:border-opacity-40">
                 <div class="p-6">
                     <div class="bg-red-400 bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">

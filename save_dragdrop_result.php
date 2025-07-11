@@ -67,5 +67,4 @@ try {
 }
 
 $conn->close();
-// Pastikan tidak ada spasi atau baris baru setelah tag penutup ?> (atau hilangkan tag penutup sama sekali)
-?>
+// Pastikan tidak ada spasi atau baris baru setelah tag penutup ?>
