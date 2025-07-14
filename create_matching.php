@@ -38,11 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Handle delete request
+// Handle delete request
 if (isset($_GET['delete'])) {
     $sessionId = $_GET['delete'];
 
-    // Verifikasi kepemilikan sebelum menghapus
-    // (Opsional) Anda bisa menambahkan pengecekan ini jika belum ada
+    // Verifikasi kepemilikan (sudah benar)
     $checkStmt = $conn->prepare("SELECT created_by FROM sessions WHERE session_id = ?");
     $checkStmt->bind_param("s", $sessionId);
     $checkStmt->execute();
@@ -55,23 +55,37 @@ if (isset($_GET['delete'])) {
         exit;
     }
 
-    // --- START MODIFIKASI DI SINI ---
+    // --- START MODIFIKASI BARU ---
+    // Urutan penghapusan harus dari tabel anak/cucu terdalam
 
-    // 1. Hapus entri dari tabel game_sessions yang merujuk pada sesi ini
+    // 1. [BARU] Hapus 'cucu': data dari tabel `players` yang terkait dengan sesi ini.
+    // Kita gunakan subquery karena `players` terhubung via `game_sessions`.
+    $deletePlayersStmt = $conn->prepare(
+        "DELETE FROM players WHERE session_code IN (SELECT session_code FROM game_sessions WHERE session_id = ?)"
+    );
+    $deletePlayersStmt->bind_param("s", $sessionId);
+    $deletePlayersStmt->execute();
+
+    // 2. Hapus 'anak': data dari tabel `game_sessions`. Sekarang akan berhasil.
     $deleteGameSessionsStmt = $conn->prepare("DELETE FROM game_sessions WHERE session_id = ?");
     $deleteGameSessionsStmt->bind_param("s", $sessionId);
-    $deleteGameSessionsStmt->execute(); // Jalankan penghapusan di tabel anak terlebih dahulu
+    $deleteGameSessionsStmt->execute();
 
-    // 2. Sekarang, hapus sesi dari tabel sessions
+    // 3. Hapus 'anak' lainnya: data dari tabel `game_results`
+    $deleteGameResultsStmt = $conn->prepare("DELETE FROM game_results WHERE session_id = ?");
+    $deleteGameResultsStmt->bind_param("s", $sessionId);
+    $deleteGameResultsStmt->execute();
+
+    // 4. Terakhir, hapus 'induk utama': data dari tabel `sessions`
     $stmt = $conn->prepare("DELETE FROM sessions WHERE session_id = ? AND created_by = ?");
     $stmt->bind_param("si", $sessionId, $userId);
 
-    if ($stmt->execute()) { // Ini adalah baris 48 yang menyebabkan error sebelumnya
-        $_SESSION['message'] = "Sesi berhasil dihapus";
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Sesi berhasil dihapus beserta seluruh data pemain dan hasilnya.";
         header("Location: create_matching.php");
         exit;
     } else {
-        $error = "Gagal menghapus sesi utama"; // Ubah pesan error agar lebih spesifik jika ini gagal
+        $error = "Gagal menghapus sesi utama setelah membersihkan data terkait.";
     }
     // --- AKHIR MODIFIKASI ---
 }
@@ -277,6 +291,25 @@ while ($row = $result->fetch_assoc()) {
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
+                            </div>
+
+                            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content text-dark">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteModalLabel"><i class="fas fa-exclamation-triangle text-danger me-2"></i> Konfirmasi Hapus</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Apakah Anda yakin ingin menghapus sesi ini?</p>
+                                            <p class="text-danger small">Tindakan ini tidak dapat diurungkan dan akan menghapus semua pertanyaan, data pemain, serta hasil game yang terkait.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                            <a id="confirmDeleteBtn" href="#" class="btn btn-danger">Ya, Hapus Sesi</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>

@@ -147,11 +147,22 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             }
         }
         
+        /* Updated Styles for "Keren" Question and Answer Display */
         .main-question-display {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            /* Keep existing glassmorphism foundation */
+            background: rgba(255, 255, 255, 0.08); /* Slightly less opaque for better backdrop visibility */
+            backdrop-filter: blur(18px); /* Increased blur for more depth */
+            border: 1px solid rgba(255, 255, 255, 0.3); /* Clearer border */
+            box-shadow: 
+                0 15px 50px rgba(0, 0, 0, 0.5), /* Stronger general shadow */
+                0 0 80px rgba(100, 108, 255, 0.3); /* Subtle blue-purple glow around the box */
+            transition: all 0.5s ease; /* Smooth transition for any future hover effects */
+        }
+
+        .main-question-display:hover {
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.6), 
+                0 0 100px rgba(100, 108, 255, 0.5); /* Enhanced glow on hover */
         }
         
         .answer-container {
@@ -163,6 +174,17 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
         .answer-container.show {
             max-height: 500px; /* Adjust as needed */
             transition: max-height 0.5s ease-in;
+        }
+
+        /* Answer Container (the inner div that holds the answer text) */
+        .answer-container .inner-answer-box { 
+            background: linear-gradient(160deg, rgba(10, 10, 30, 0.8), rgba(30, 30, 60, 0.8)); /* Darker, subtle blue gradient */
+            border-left: 6px solid; /* Thicker left border */
+            border-image: linear-gradient(to bottom, #00F0FF, #008AFF) 1; /* Vibrant blue-cyan gradient border */
+            box-shadow: 0 6px 20px rgba(0, 220, 255, 0.3); /* Glowing effect for the answer box */
+            padding: 1.5rem; /* Increased padding */
+            border-radius: 0.75rem; /* Rounded corners */
+            transition: all 0.5s ease;
         }
         
         .btn-glow {
@@ -252,6 +274,30 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             opacity: 0;
             transform: translateY(-20px);
         }
+
+        /* Input/Textarea styles in modals for better contrast */
+        .modal-glass textarea {
+            background: rgba(255, 255, 255, 0.15) !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            color: white !important;
+            padding: 0.75rem 1rem !important; /* Slightly more padding */
+            font-size: 1rem !important; /* Ensure readable font size */
+        }
+        .modal-glass textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+        .modal-glass textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(132, 204, 22, 0.7); /* Focus ring for inputs */
+            border-color: rgba(132, 204, 22, 0.7) !important;
+        }
+
+        /* Specific styles for the "Tambah Pertanyaan" and "Edit Pertanyaan" modals */
+        #addQuestionModal .modal-glass h2,
+        #editQuestionModal .modal-glass h2 {
+            color: #E0E7FF; /* Light blue-purple for modal titles */
+            text-shadow: 0 0 5px rgba(100, 108, 255, 0.5);
+        }
     </style>
 </head>
 <body class="p-6 relative overflow-hidden flex flex-col items-center justify-center min-h-screen">
@@ -297,23 +343,23 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
 
     <div id="mainQuestionDisplay" 
          class="main-question-display p-8 rounded-xl w-full max-w-4xl relative animate__animated animate__fadeIn flex flex-col justify-between"
-         style="min-height: 40vh;"> <?php if ($first_question): ?>
+         style="min-height: 40vh;"> 
+        <?php if ($first_question): ?>
             <div class="absolute top-4 right-4 flex space-x-3">
                 <button id="showAnswerBtn" onclick="toggleAnswer()" title="Tampilkan Jawaban" class="text-green-400 hover:text-green-300 transition-colors">
                     <i class="fas fa-check-square fa-lg"></i>
                 </button>
-                </div>
+            </div>
 
             <div class="flex-grow flex flex-col justify-center text-center">
-                <p id="questionText" class="text-4xl lg:text-5xl font-bold text-white break-words mb-4">
+                <p id="questionText" class="text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-500 break-words mb-4">
                     <?= htmlspecialchars($first_question['question_text']) ?>
                 </p>
             </div>
             
             <div id="answerContainer" class="answer-container mt-6">
-                <div class="bg-gray-800 bg-opacity-50 p-4 rounded-lg border-l-4 border-green-500">
-                    <h3 class="text-lg font-semibold text-green-400 mb-2">Jawaban:</h3>
-                    <p id="answerText" class="text-white text-xl break-words">
+                <div class="inner-answer-box"> <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-teal-500 mb-2">Jawaban:</h3>
+                    <p id="answerText" class="text-2xl text-white break-words">
                         <?= isset($first_question['answer']) && $first_question['answer'] ? htmlspecialchars($first_question['answer']) : 'Tidak ada jawaban tersimpan.' ?>
                     </p>
                 </div>

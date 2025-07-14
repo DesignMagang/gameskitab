@@ -3,279 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bible Drag & Drop Quiz</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Shell Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        .droppable {
-            transition: all 0.3s ease;
-            min-height: 80px;
-        }
-        .draggable {
-            transition: all 0.2s ease;
-            user-select: none;
-        }
-        .dragging {
-            opacity: 0.5;
-            transform: scale(1.05);
-        }
-        .correct-drop {
-            background-color: #d1fae5 !important;
-            border-color: #10b981 !important;
-        }
-        .incorrect-drop {
-            background-color: #fee2e2 !important;
-            border-color: #ef4444 !important;
-        }
-        .correct-answer {
+        .cup {
+            width: 120px;
+            height: 120px;
+            background-color: #a0a0a0;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            cursor: pointer;
             position: relative;
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden; /* Ensure ball doesn't overflow when hidden */
         }
-        .correct-answer::after {
-            content: "✓";
+        .cup.selected {
+            border: 4px solid #4CAF50; /* Highlight selected cup */
+        }
+        .ball {
+            width: 30px;
+            height: 30px;
+            background-color: #FFD700;
+            border-radius: 50%;
             position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #10b981;
-            font-weight: bold;
+            bottom: 10px;
+            display: none; /* Hidden by default */
         }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8fafc;
-        }
-        .title-font {
-            font-family: 'Playfair Display', serif;
+        .cup-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            position: relative;
+            padding-bottom: 20px; /* Space for the ball to appear */
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
-    <div class="container mx-auto px-4 py-12 max-w-4xl">
-        <!-- Header -->
-        <div class="text-center mb-12">
-            <h1 class="title-font text-4xl md:text-5xl font-bold text-blue-900 mb-4">Bible Trivia Challenge</h1>
-            <p class="text-lg text-blue-800">Drag and drop the correct answers to the questions below</p>
-            <div class="w-24 h-1 bg-blue-500 mx-auto mt-4 rounded-full"></div>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="mb-8 bg-white rounded-full overflow-hidden shadow-inner">
-            <div id="progress-bar" class="h-3 bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500" style="width: 0%"></div>
-        </div>
-
-        <!-- Quiz Container -->
-        <div id="quiz-container" class="space-y-8">
-            <!-- Question 1 -->
-            <div class="question-card bg-white rounded-xl shadow-lg overflow-hidden" data-question-id="1">
-                <div class="p-6 bg-gradient-to-r from-blue-600 to-indigo-700">
-                    <h2 class="text-xl font-bold text-white">Question 1</h2>
-                    <p class="text-blue-100 mt-1">Who built the ark?</p>
-                </div>
-                
-                <div class="p-6">
-                    <!-- Draggable Options -->
-                    <div class="flex flex-wrap gap-3 mb-6">
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="Moses">
-                            Moses
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="Noah">
-                            Noah
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="Abraham">
-                            Abraham
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="David">
-                            David
-                        </div>
-                    </div>
-                    
-                    <!-- Drop Zone -->
-                    <div class="droppable p-5 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50" data-correct="Noah">
-                        <p class="text-gray-500 text-center">Drag your answer here</p>
-                    </div>
-                </div>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg text-center">
+        <h1 class="text-3xl font-bold mb-6">Tebak di Mana Bolanya!</h1>
+        <div id="game-area" class="flex justify-center space-x-8 mb-8">
+            <div id="cup-0" class="cup">
+                <div class="ball"></div>
             </div>
-
-            <!-- Question 2 -->
-            <div class="question-card bg-white rounded-xl shadow-lg overflow-hidden" data-question-id="2">
-                <div class="p-6 bg-gradient-to-r from-blue-600 to-indigo-700">
-                    <h2 class="text-xl font-bold text-white">Question 2</h2>
-                    <p class="text-blue-100 mt-1">How many days did God take to create the world?</p>
-                </div>
-                
-                <div class="p-6">
-                    <!-- Draggable Options -->
-                    <div class="flex flex-wrap gap-3 mb-6">
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="3">
-                            3
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="6">
-                            6
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="7">
-                            7
-                        </div>
-                        <div draggable="true" class="draggable px-5 py-3 bg-blue-100 text-blue-800 rounded-lg cursor-grab hover:bg-blue-200 shadow-sm active:cursor-grabbing" data-value="10">
-                            10
-                        </div>
-                    </div>
-                    
-                    <!-- Drop Zone -->
-                    <div class="droppable p-5 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50" data-correct="6">
-                        <p class="text-gray-500 text-center">Drag your answer here</p>
-                    </div>
-                </div>
+            <div id="cup-1" class="cup">
+                <div class="ball"></div>
+            </div>
+            <div id="cup-2" class="cup">
+                <div class="ball"></div>
             </div>
         </div>
-
-        <!-- Controls -->
-        <div class="mt-12 flex justify-between items-center">
-            <button id="reset-btn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition shadow">
-                Reset All
-            </button>
-            <button id="check-btn" class="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-green-700 transition shadow-lg hover:shadow-xl">
-                Check Answers
-            </button>
-        </div>
-
-        <!-- Results -->
-        <div id="results" class="mt-8 hidden">
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <h3 class="text-xl font-bold text-blue-900 mb-4">Your Results</h3>
-                <div id="score-display" class="text-3xl font-bold text-center mb-4"></div>
-                <div id="feedback" class="text-center text-gray-600"></div>
-            </div>
-        </div>
+        <button id="start-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full text-lg">Mulai Permainan</button>
+        <p id="message" class="mt-4 text-lg font-semibold"></p>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Drag and Drop Functionality
-            const draggables = document.querySelectorAll('.draggable');
-            const droppables = document.querySelectorAll('.droppable');
-            const checkBtn = document.getElementById('check-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            const resultsDiv = document.getElementById('results');
-            const scoreDisplay = document.getElementById('score-display');
-            const feedbackDiv = document.getElementById('feedback');
-            const progressBar = document.getElementById('progress-bar');
-            const totalQuestions = document.querySelectorAll('.question-card').length;
-            
-            let draggedItem = null;
-            let answers = {};
+    const cups = document.querySelectorAll('.cup');
+    const balls = document.querySelectorAll('.ball');
+    const startButton = document.getElementById('start-button');
+    const messageDisplay = document.getElementById('message');
 
-            // Drag Start
-            draggables.forEach(draggable => {
-                draggable.addEventListener('dragstart', function() {
-                    draggedItem = this;
-                    setTimeout(() => {
-                        this.classList.add('dragging');
-                    }, 0);
-                });
+    let ballPosition = -1; // Index of the cup containing the ball
+    let isShuffling = false;
+    let isGameOver = false;
 
-                draggable.addEventListener('dragend', function() {
-                    this.classList.remove('dragging');
-                });
-            });
-
-            // Drop Events
-            droppables.forEach(droppable => {
-                droppable.addEventListener('dragover', e => {
-                    e.preventDefault();
-                    droppable.classList.add('bg-blue-50', 'border-blue-400');
-                });
-
-                droppable.addEventListener('dragleave', () => {
-                    droppable.classList.remove('bg-blue-50', 'border-blue-400');
-                });
-
-                droppable.addEventListener('drop', e => {
-                    e.preventDefault();
-                    droppable.classList.remove('bg-blue-50', 'border-blue-400');
-                    
-                    if (draggedItem) {
-                        // Remove any existing answer
-                        const existingAnswer = droppable.querySelector('.draggable');
-                        if (existingAnswer) {
-                            droppable.parentNode.querySelector('.flex').appendChild(existingAnswer);
-                        }
-                        
-                        // Add the new answer
-                        const clone = draggedItem.cloneNode(true);
-                        clone.classList.remove('hover:bg-blue-200');
-                        clone.classList.add('cursor-auto', 'w-full');
-                        clone.setAttribute('draggable', 'false');
-                        droppable.innerHTML = '';
-                        droppable.appendChild(clone);
-                        
-                        // Store the answer
-                        const questionId = droppable.closest('.question-card').dataset.questionId;
-                        answers[questionId] = draggedItem.dataset.value;
-                        
-                        // Update progress
-                        updateProgress();
-                    }
-                });
-            });
-
-            // Check Answers
-            checkBtn.addEventListener('click', () => {
-                let correctCount = 0;
-                
-                droppables.forEach(droppable => {
-                    const questionId = droppable.closest('.question-card').dataset.questionId;
-                    const userAnswer = answers[questionId];
-                    const correctAnswer = droppable.dataset.correct;
-                    
-                    if (userAnswer === correctAnswer) {
-                        droppable.classList.add('correct-drop');
-                        droppable.classList.remove('incorrect-drop');
-                        correctCount++;
-                    } else {
-                        droppable.classList.add('incorrect-drop');
-                        droppable.classList.remove('correct-drop');
-                        
-                        // Show correct answer
-                        const correctElement = document.createElement('div');
-                        correctElement.className = 'text-green-600 font-medium mt-2 text-sm';
-                        correctElement.textContent = `Correct answer: ${correctAnswer}`;
-                        droppable.appendChild(correctElement);
-                    }
-                });
-                
-                // Show results
-                const score = Math.round((correctCount / totalQuestions) * 100);
-                scoreDisplay.textContent = `${score}% Score`;
-                scoreDisplay.className = `text-3xl font-bold text-center mb-4 ${
-                    score >= 80 ? 'text-green-600' : 
-                    score >= 50 ? 'text-yellow-500' : 'text-red-600'
-                }`;
-                
-                feedbackDiv.textContent = `You answered ${correctCount} out of ${totalQuestions} questions correctly!`;
-                resultsDiv.classList.remove('hidden');
-                
-                // Scroll to results
-                resultsDiv.scrollIntoView({ behavior: 'smooth' });
-            });
-
-            // Reset All
-            resetBtn.addEventListener('click', () => {
-                droppables.forEach(droppable => {
-                    droppable.innerHTML = '<p class="text-gray-500 text-center">Drag your answer here</p>';
-                    droppable.classList.remove('correct-drop', 'incorrect-drop');
-                });
-                
-                answers = {};
-                resultsDiv.classList.add('hidden');
-                updateProgress();
-            });
-
-            // Update progress bar
-            function updateProgress() {
-                const answered = Object.keys(answers).length;
-                const progress = (answered / totalQuestions) * 100;
-                progressBar.style.width = `${progress}%`;
-            }
+    // --- Game Initialization ---
+    function initializeGame() {
+        // Reset all cups and hide balls
+        cups.forEach(cup => {
+            cup.classList.remove('selected');
+            cup.style.transform = 'translateY(0)'; // Reset cup position
         });
+        balls.forEach(ball => ball.style.display = 'none');
+
+        messageDisplay.textContent = 'Klik "Mulai Permainan" untuk bermain!';
+        startButton.style.display = 'block';
+        isShuffling = false;
+        isGameOver = false;
+    }
+
+    // --- Place the Ball Randomly ---
+    function placeBall() {
+        ballPosition = Math.floor(Math.random() * cups.length);
+        balls[ballPosition].style.display = 'block';
+        messageDisplay.textContent = 'Perhatikan di mana bolanya!';
+
+        // Briefly show the ball before shuffling
+        setTimeout(() => {
+            balls[ballPosition].style.display = 'none'; // Hide the ball again
+            messageDisplay.textContent = 'Cangkir sedang diacak...';
+            shuffleCups();
+        }, 1500); // Show ball for 1.5 seconds
+    }
+
+    // --- Shuffle Cups Animation ---
+    async function shuffleCups() {
+        isShuffling = true;
+        startButton.style.display = 'none';
+        const shuffleCount = 15; // Number of swaps
+        const swapDuration = 300; // Milliseconds per swap
+
+        for (let i = 0; i < shuffleCount; i++) {
+            const [index1, index2] = getRandomCupIndices();
+            await swapCups(cups[index1], cups[index2], swapDuration);
+
+            // Update ball position if it was in one of the swapped cups
+            if (ballPosition === index1) {
+                ballPosition = index2;
+            } else if (ballPosition === index2) {
+                ballPosition = index1;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, swapDuration / 2)); // Short pause between swaps
+        }
+
+        isShuffling = false;
+        messageDisplay.textContent = 'Sudah selesai mengacak! Tebak di mana bolanya!';
+        enableCupClicks();
+    }
+
+    // Helper to get two distinct random indices
+    function getRandomCupIndices() {
+        let index1 = Math.floor(Math.random() * cups.length);
+        let index2 = Math.floor(Math.random() * cups.length);
+        while (index1 === index2) {
+            index2 = Math.floor(Math.random() * cups.length);
+        }
+        return [index1, index2];
+    }
+
+    // --- Animate Cup Swaps ---
+    function swapCups(cup1, cup2, duration) {
+        return new Promise(resolve => {
+            const cup1Rect = cup1.getBoundingClientRect();
+            const cup2Rect = cup2.getBoundingClientRect();
+
+            const deltaX = cup2Rect.left - cup1Rect.left;
+
+            // Apply transformations
+            cup1.style.transition = `transform ${duration / 1000}s ease-in-out`;
+            cup2.style.transition = `transform ${duration / 1000}s ease-in-out`;
+
+            // Move cups
+            cup1.style.transform = `translateX(${deltaX}px)`;
+            cup2.style.transform = `translateX(${-deltaX}px)`;
+
+            // After animation, reset positions and swap DOM elements
+            setTimeout(() => {
+                const parent = cup1.parentNode;
+                // Temporarily remove transitions to prevent re-animation on DOM swap
+                cup1.style.transition = 'none';
+                cup2.style.transition = 'none';
+
+                if (cup1.nextSibling === cup2) {
+                    parent.insertBefore(cup2, cup1);
+                } else {
+                    parent.insertBefore(cup1, cup2);
+                }
+
+                // Reset transform to 0 after DOM swap
+                cup1.style.transform = 'translateX(0)';
+                cup2.style.transform = 'translateX(0)';
+
+                // Re-enable transition for future moves
+                setTimeout(() => {
+                    cup1.style.transition = `transform 0.3s ease-in-out`;
+                    cup2.style.transition = `transform 0.3s ease-in-out`;
+                    resolve();
+                }, 50); // Small delay to allow transform reset to apply
+            }, duration);
+        });
+    }
+
+    // --- Enable/Disable Cup Clicks ---
+    function enableCupClicks() {
+        cups.forEach((cup, index) => {
+            cup.onclick = () => handleCupClick(index);
+            cup.style.cursor = 'pointer';
+        });
+    }
+
+    function disableCupClicks() {
+        cups.forEach(cup => {
+            cup.onclick = null;
+            cup.style.cursor = 'default';
+        });
+    }
+
+    // --- Handle Player's Guess ---
+    function handleCupClick(selectedIndex) {
+        if (isShuffling || isGameOver) return;
+
+        isGameOver = true;
+        disableCupClicks(); // Prevent further clicks
+
+        // Lift the selected cup slightly
+        cups[selectedIndex].style.transform = 'translateY(-20px)';
+        cups[selectedIndex].classList.add('selected');
+
+        setTimeout(() => {
+            // Show all balls after the guess
+            balls[ballPosition].style.display = 'block'; // Show the correct ball
+            cups[ballPosition].style.transform = 'translateY(-20px)'; // Lift the correct cup if different
+
+            if (selectedIndex === ballPosition) {
+                messageDisplay.textContent = 'Selamat! Anda menebak dengan benar!';
+                messageDisplay.classList.add('text-green-600');
+                messageDisplay.classList.remove('text-red-600');
+            } else {
+                messageDisplay.textContent = 'Maaf, Anda salah. Bolanya ada di bawah cangkir ini.';
+                messageDisplay.classList.add('text-red-600');
+                messageDisplay.classList.remove('text-green-600');
+            }
+
+            // Option to play again
+            setTimeout(() => {
+                startButton.textContent = 'Main Lagi';
+                startButton.style.display = 'block';
+                messageDisplay.classList.remove('text-green-600', 'text-red-600');
+            }, 2000);
+        }, 1000); // Delay before revealing result
+    }
+
+    // --- Event Listeners ---
+    startButton.addEventListener('click', () => {
+        initializeGame();
+        placeBall();
+    });
+
+    // Initial setup
+    initializeGame();
+});
     </script>
 </body>
 </html>
