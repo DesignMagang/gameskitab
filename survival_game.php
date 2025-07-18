@@ -205,6 +205,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['question_text'])) {
                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center">
                     <i class="fas fa-eye mr-2"></i> Preview
                 </a>
+                 <a href="survival_score_host.php?session=<?= $sessionId ?>" 
+                   class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg flex items-center transition-all">
+                    <i class="fas fa-trophy mr-2"></i> Skor
+                </a>
             </div>
         </div>
 

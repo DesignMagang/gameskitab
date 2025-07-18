@@ -10,14 +10,29 @@ if (!isset($_SESSION['user_id'])) {
 
 // Periksa apakah sessionid ada di URL
 if (!isset($_GET['sessionid'])) {
-    die('Sesi tidak ditemukan. Kembali ke halaman utama.');
+    // Lebih baik redirect ke halaman daftar sesi atau dashboard daripada die()
+    header("Location: index.php"); // Atau halaman lain yang sesuai
+    exit();
 }
 
 $sessionid = $_GET['sessionid'];
 $user_id = $_SESSION['user_id'];
 $session_name = '';
+
+// Inisialisasi pesan error dan success dari session
+// Ini penting agar pesan dapat ditampilkan setelah redirect
 $error = '';
 $success_message = '';
+
+if (isset($_SESSION['form_success_message'])) {
+    $success_message = $_SESSION['form_success_message'];
+    unset($_SESSION['form_success_message']); // Hapus dari session setelah diambil
+}
+if (isset($_SESSION['form_error_message'])) {
+    $error = $_SESSION['form_error_message'];
+    unset($_SESSION['form_error_message']); // Hapus dari session setelah diambil
+}
+
 
 // Ambil data sesi dari database dan verifikasi kepemilikan
 $stmt = $conn->prepare("SELECT session_name, created_by FROM dragdrop_sessions WHERE sessionid = ?");
@@ -25,23 +40,30 @@ $stmt->bind_param("s", $sessionid);
 $stmt->execute();
 $result = $stmt->get_result();
 if ($result->num_rows === 0) {
-    die('Sesi tidak valid atau tidak ditemukan.');
+    // Sesi tidak valid, redirect ke dashboard
+    header("Location: index.php");
+    exit();
 }
 $session_data = $result->fetch_assoc();
 
 // Pastikan hanya pembuat sesi yang bisa mengakses halaman ini
 if ($session_data['created_by'] !== $user_id) {
-    die('Anda tidak memiliki izin untuk mengelola sesi ini.');
+    // Tidak memiliki izin, redirect ke dashboard
+    header("Location: index.php");
+    exit();
 }
 
 $session_name = htmlspecialchars($session_data['session_name']);
 
-// --- BAGIAN PROSES MENYIMPAN PERTANYAAN/JAWABAN/RONDE ---
+// --- BAGIAN PROSES MENYIMPAN PERTANYAAN/JAWABAN/RONDE (MODIFIKASI INI PENTING) ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_questions'])) {
     $questions_data = json_decode($_POST['questions_json'], true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        $error = 'Data pertanyaan tidak valid. Silakan coba lagi.';
+        $_SESSION['form_error_message'] = 'Data pertanyaan tidak valid. Silakan coba lagi.';
+        // REDIRECT SETELAH ERROR VALIDASI
+        header("Location: create_dragdrop.php?sessionid=" . urlencode($sessionid));
+        exit();
     } else {
         try {
             $conn->begin_transaction();
@@ -56,13 +78,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_questions'])) {
             $stmt_insert = $conn->prepare("INSERT INTO dragdrop_questions (session_id, round_number, question_text, correct_answer, drag_options) VALUES (?, ?, ?, ?, ?)");
             
             foreach ($questions_data as $round_num => $round_questions) {
+                // Pastikan $round_questions adalah array
+                if (!is_array($round_questions)) {
+                    continue; // Lewati jika bukan array untuk mencegah error
+                }
                 foreach ($round_questions as $question) {
                     $round_number = $round_num;
-                    $question_text = htmlspecialchars($question['question']);
-                    $correct_answer = htmlspecialchars($question['correct_answer']);
+                    $question_text = htmlspecialchars($question['question'] ?? ''); // Pastikan ada default jika kosong
+                    $correct_answer = htmlspecialchars($question['correct_answer'] ?? ''); // Pastikan ada default jika kosong
                     
                     // Pisahkan opsi drag, bersihkan, dan gabungkan lagi untuk disimpan
-                    $drag_options_array = array_map('trim', explode(',', $question['drag_options']));
+                    $drag_options_array = array_map('trim', explode(',', $question['drag_options'] ?? ''));
                     $drag_options_array = array_filter($drag_options_array); // Hapus yang kosong
                     $drag_options = json_encode($drag_options_array); // Simpan sebagai JSON string
 
@@ -72,16 +98,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_questions'])) {
             }
             $stmt_insert->close();
             $conn->commit();
-            $success_message = 'Pertanyaan dan ronde berhasil disimpan!';
+            
+            // REDIRECT SETELAH PROSES POST BERHASIL (INI PENTING UNTUK PRG)
+            $_SESSION['form_success_message'] = 'Pertanyaan dan ronde berhasil disimpan!';
+            header("Location: create_dragdrop.php?sessionid=" . urlencode($sessionid));
+            exit(); // SANGAT PENTING: Hentikan eksekusi skrip setelah redirect
 
         } catch (Exception $e) {
             $conn->rollback();
-            $error = "Gagal menyimpan pertanyaan: " . $e->getMessage();
+            $_SESSION['form_error_message'] = "Gagal menyimpan pertanyaan: " . $e->getMessage();
+            // REDIRECT SETELAH ERROR DATABASE
+            header("Location: create_dragdrop.php?sessionid=" . urlencode($sessionid));
+            exit(); // SANGAT PENTING: Hentikan eksekusi skrip setelah redirect
         }
     }
 }
+// --- AKHIR BAGIAN MODIFIKASI PENTING ---
 
-// --- AMBIL PERTANYAAN YANG SUDAH ADA UNTUK SESI INI ---
+
+// --- AMBIL PERTANYAAN YANG SUDAH ADA UNTUK SESI INI (TIDAK PERLU BERUBAH) ---
 $existing_questions = [];
 try {
     $stmt_fetch = $conn->prepare("SELECT round_number, question_text, correct_answer, drag_options FROM dragdrop_questions WHERE session_id = ? ORDER BY round_number ASC, question_id ASC");
@@ -102,7 +137,12 @@ try {
     }
     $stmt_fetch->close();
 } catch (Exception $e) {
-    $error = "Gagal memuat pertanyaan: " . $e->getMessage();
+    // Tangani error jika terjadi masalah saat memuat pertanyaan
+    // Jika $error sudah diisi dari proses POST sebelumnya, jangan timpa
+    // Jika belum, baru diisi.
+    if (empty($error)) {
+        $error = "Gagal memuat pertanyaan: " . $e->getMessage();
+    }
 }
 
 // Pastikan ada setidaknya satu ronde jika belum ada pertanyaan
@@ -110,16 +150,9 @@ if (empty($existing_questions)) {
     $existing_questions[1] = []; // Mulai dengan Round 1 jika belum ada
 }
 
-// Set messages from session if redirected (for PRG pattern)
-if (isset($_SESSION['form_success_message'])) {
-    $success_message = $_SESSION['form_success_message'];
-    unset($_SESSION['form_success_message']);
-}
-if (isset($_SESSION['form_error_message'])) {
-    $error = $_SESSION['form_error_message'];
-    unset($_SESSION['form_error_message']);
-}
-
+// Catatan: Bagian pengambilan $success_message dan $error dari session
+// sudah dipindahkan ke atas, sebelum pengambilan data sesi,
+// untuk memastikan pesan tersedia segera setelah redirect.
 ?>
 
 <!DOCTYPE html>
@@ -238,16 +271,23 @@ if (isset($_SESSION['form_error_message'])) {
 
                 <div class="flex flex-col sm:flex-row justify-between items-center mt-8 gap-4">
                     <button type="button" id="add-round-btn" class="w-full sm:w-auto py-3 px-6 add-btn text-white font-semibold rounded-lg 
-                               hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900">
-                        <i class="fas fa-plus-circle mr-2"></i> Tambah Ronde
+                                hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                        <i class="fas fa-plus-circle mr-2"></i> 
+                        Ronde
                     </button>
                     <button type="button" id="preview-dragdrop-btn" class="w-full sm:w-auto py-3 px-6 submit-btn text-white font-semibold rounded-lg 
-                               hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900">
-                        <i class="fas fa-eye mr-2"></i> Preview Drag & Drop
+                                hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                        <!-- <i class="fas fa-eye mr-2"></i>  -->
+                        Mainkan
+                    </button>
+                    <button type="button" id="view-scores-btn" class="w-full sm:w-auto py-3 px-6 submit-btn text-white font-semibold rounded-lg 
+                                hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                        <i class="fas fa-chart-bar mr-2"></i>Skor
                     </button>
                     <button type="submit" name="save_questions" class="w-full sm:w-auto py-3 px-6 submit-btn text-white font-semibold rounded-lg 
-                               hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900">
-                        <i class="fas fa-save mr-2"></i> Simpan Semua
+                                hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                        <!-- <i class="fas fa-save mr-2"></i>  -->
+                        Simpan 
                     </button>
                 </div>
             </form>
@@ -288,6 +328,7 @@ if (isset($_SESSION['form_error_message'])) {
         const questionsForm = document.getElementById('questionsForm');
         const questionsJsonInput = document.getElementById('questionsJsonInput');
         const previewDragdropBtn = document.getElementById('preview-dragdrop-btn');
+        const viewScoresBtn = document.getElementById('view-scores-btn'); // Dapatkan tombol baru
 
         let currentRoundNumber = 0;
         let questionsData = {}; // Object to hold all questions organized by round
@@ -357,8 +398,8 @@ if (isset($_SESSION['form_error_message'])) {
                     addQuestionToRound(roundContent, roundNum, q.question, q.correct_answer, q.drag_options, index);
                 });
             } else {
-                 // If no questions in this round, add an empty one
-                 addQuestionToRound(roundContent, roundNum);
+                    // If no questions in this round, add an empty one
+                    addQuestionToRound(roundContent, roundNum);
             }
 
 
@@ -413,17 +454,17 @@ if (isset($_SESSION['form_error_message'])) {
                 <div class="mb-3">
                     <label class="block text-slate-300 text-sm font-medium mb-1">Pertanyaan:</label>
                     <textarea class="w-full px-3 py-2 input-field text-white rounded-md border border-slate-600 focus:outline-none focus:border-blue-500 placeholder:text-slate-500" 
-                              rows="3" placeholder="Masukkan pertanyaan untuk drag & drop ini">${questionText}</textarea>
+                                rows="3" placeholder="Masukkan pertanyaan untuk drag & drop ini">${questionText}</textarea>
                 </div>
                 <div class="mb-3">
                     <label class="block text-slate-300 text-sm font-medium mb-1">Jawaban Benar:</label>
                     <input type="text" class="w-full px-3 py-2 input-field text-white rounded-md border border-slate-600 focus:outline-none focus:border-blue-500 placeholder:text-slate-500" 
-                           placeholder="Jawaban yang benar untuk pertanyaan di atas" value="${correctAnswer}">
+                               placeholder="Jawaban yang benar untuk pertanyaan di atas" value="${correctAnswer}">
                 </div>
                 <div>
                     <label class="block text-slate-300 text-sm font-medium mb-1">Opsi Jawaban Lain (dipisahkan koma):</label>
                     <input type="text" class="w-full px-3 py-2 input-field text-white rounded-md border border-slate-600 focus:outline-none focus:border-blue-500 placeholder:text-slate-500" 
-                           placeholder="Contoh: kata1, kata2, kalimat panjang" value="${dragOptions}">
+                               placeholder="Contoh: kata1, kata2, kalimat panjang" value="${dragOptions}">
                     <p class="text-xs text-slate-400 mt-1">Masukkan kata/frasa yang akan muncul sebagai opsi drag. Pisahkan dengan koma.</p>
                 </div>
             `;
@@ -519,6 +560,12 @@ if (isset($_SESSION['form_error_message'])) {
                 showGlobalMessage("Gagal menyimpan data sebelum preview. Coba lagi.", true);
             });
             */
+        });
+
+        // Event listener for the new "Lihat Skor" button
+        viewScoresBtn.addEventListener('click', function() {
+            // Redirect to dragdrop_score_host.php with the current session ID
+            window.location.href = `dragdrop_score_host.php?sessionid=<?= $sessionid ?>`;
         });
     </script>
 </body>

@@ -468,11 +468,21 @@ $playlist_json = json_encode($playlist);
         const finalTeamName = document.getElementById('finalTeamName');
         const playAgainBtn = document.getElementById('playAgainBtn');
 
+        const correctAnswerModal = document.getElementById('correctAnswerModal');
+        const correctSentenceDisplay = document.getElementById('correctSentenceDisplay');
+        const closeCorrectModalBtn = document.getElementById('closeCorrectModalBtn');
+        
         // Audio Elements
         const countdownSound = document.getElementById('countdownSound');
         const correctAnswerSound = document.getElementById('correctAnswerSound');
         const incorrectAnswerSound = document.getElementById('incorrectAnswerSound');
         const winRoundSound = document.getElementById('winRoundSound'); 
+
+        // Listener for the modal close button
+    closeCorrectModalBtn.addEventListener('click', () => {
+        correctAnswerModal.classList.add('hidden');
+        nextQuestion(); // Proceed to the next question after closing modal
+    });
 
         // Music Player Functionality
         const musicPlayer = {
@@ -1068,5 +1078,7 @@ $playlist_json = json_encode($playlist);
             gameMessage.classList.add('hidden'); 
         }
     </script>
+
+</div>
 </body>
 </html>

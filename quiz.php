@@ -231,12 +231,12 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     </style>
 </head>
 
-<body class="relative h-screen bg-gray-900 overflow-hidden">
+<body class="relative h-screen bg-gray-900 overflow-y-auto"> 
 
     <div class="bg-particles" id="particles"></div>
 
-    <div class="relative z-10 w-full h-full p-6">
-        <div class="p-6 rounded-lg w-full h-full">
+    <div class="relative z-10 w-full p-6"> 
+        <div class="p-6 rounded-lg w-full"> 
             <div class="flex justify-between items-center mb-6">
                 <a href="dashboard.php" class="text-6xl font-bold animated-gradient-text hover:scale-105 transition-transform duration-300">
                     QUIZ DASHBOARD
@@ -245,7 +245,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     <button onclick="document.getElementById('modal').classList.remove('hidden')" 
                             class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 font-extrabold transition-all duration-300 hover:scale-110">
                         <svg xmlns="http://www.w3.org/2000/svg" 
-                            class="h-6 w-6 inline-block font-black"  
+                            class="h-6 w-6 inline-block font-black"  
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor" 
@@ -256,13 +256,10 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                         </svg>
                     </button>
 
-                    <span class="font-semibold text-2xl animated-gradient-text hover:text-shadow-lg transition-all duration-300">
-                        <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
-                    </span>
-
-                    <a href="logout.php" class="animated-gradient-text text-2xl hover:underline font-semibold hover:scale-105 transition-transform duration-300">
-                        Keluar
-                    </a>
+                    <button id="resetQuizzesBtn" 
+                            class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 font-extrabold transition-all duration-300 hover:scale-110">
+                        <i class="fas fa-redo-alt inline-block font-black"></i> Reset
+                    </button>
                 </div>
             </div>
 
@@ -306,14 +303,14 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                 <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 transform transition-all duration-300 animate-fade-in">
                     <h2 class="text-xl font-semibold mb-4 text-white">Tambah Kuis</h2>
                     <form action="quiz.php" method="POST"> <input type="hidden" name="action" value="add_quiz"> <input type="text" name="quiz_name" placeholder="Nama Kuis" required 
-                               class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                 class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <div class="flex justify-end gap-2">
                             <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" 
-                                    class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
+                                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
                                 Batal
                             </button>
                             <button type="submit" 
-                                    class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded hover:from-blue-600 hover:to-cyan-600 transition-all duration-300">
+                                        class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded hover:from-blue-600 hover:to-cyan-600 transition-all duration-300">
                                 Simpan
                             </button>
                         </div>
@@ -327,14 +324,14 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     <form action="edit_quiz.php" method="POST">
                         <input type="hidden" name="quiz_id" id="editQuizId">
                         <input type="text" name="quiz_name" id="editQuizName" required 
-                               class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                                 class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
                         <div class="flex justify-end gap-2">
                             <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')" 
-                                    class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
+                                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
                                 Batal
                             </button>
                             <button type="submit" 
-                                    class="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded hover:from-yellow-600 hover:to-amber-600 transition-all duration-300">
+                                        class="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded hover:from-yellow-600 hover:to-amber-600 transition-all duration-300">
                                 Simpan Perubahan
                             </button>
                         </div>
@@ -345,11 +342,13 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
                 <?php if ($result->num_rows > 0): ?>
                     <?php while ($row = $result->fetch_assoc()): ?>
-                        <div class="gradient-border bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col justify-between glow-card hover:bg-gray-700 transition-all duration-300">
+                        <div id="quiz-card-<?= $row['id'] ?>" class="gradient-border bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col justify-between glow-card hover:bg-gray-700 transition-all duration-300">
                             <div class="flex justify-between items-start">
-                                <a href="quiz_question.php?id=<?= $row['id'] ?>" class="text-2xl font-bold hover:no-underline break-words text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all duration-300">
-                       <?= htmlspecialchars($row['name']) ?>
-                    </a>
+                                <a href="quiz_question.php?id=<?= $row['id'] ?>" 
+                                   onclick="hideQuizCard(<?= $row['id'] ?>);" 
+                                   class="text-2xl font-bold hover:no-underline break-words text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all duration-300">
+                                    <?= htmlspecialchars($row['name']) ?>
+                                </a>
 
                                 <div class="flex items-center gap-2 mt-2">
                                     <button onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>')" 
@@ -390,7 +389,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     <audio id="backgroundMusic"></audio>
 
     <script>
-        // Music player functionality
+        // Music player functionality (tidak ada perubahan)
         const musicPlayer = {
             audio: document.getElementById('backgroundMusic'),
             playPauseBtn: document.getElementById('playPauseBtn'),
@@ -404,36 +403,24 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             init: function() {
                 if (this.playlist.length > 0) {
                     this.loadTrack();
-                    // Autoplay logic:
-                    // Only attempt to play if music was previously on AND user has interacted with the page
-                    // Browsers block autoplay without user interaction.
                     if (this.isPlaying) {
-                        // This might fail if no user interaction. A click on the play button is usually needed.
                         this.play(); 
                     }
                 }
-                
-                // Event listeners
                 this.playPauseBtn.addEventListener('click', () => this.togglePlay());
                 this.audio.addEventListener('ended', () => this.nextTrack());
             },
-            
             loadTrack: function() {
                 if (this.playlist.length === 0) return;
-                
                 const track = this.playlist[this.currentTrack];
                 this.audio.src = track.file_path;
                 this.audio.volume = this.volume;
                 this.nowPlaying.textContent = track.display_name;
                 this.trackInfo.textContent = `Track ${this.currentTrack + 1} of ${this.playlist.length}`;
-                
-                // Save current track to database
                 this.saveSettings();
             },
-            
             play: function() {
                 if (this.playlist.length === 0) return;
-                
                 this.audio.play()
                     .then(() => {
                         this.isPlaying = true;
@@ -442,20 +429,17 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     })
                     .catch(error => {
                         console.error('Playback failed (user interaction might be needed):', error);
-                        // Fallback: If autoplay fails, update button to play icon
                         this.isPlaying = false;
                         this.playPauseBtn.innerHTML = '<i class="fas fa-play text-white"></i>';
-                        this.saveSettings(); // Save that music is off if play failed
+                        this.saveSettings();
                     });
             },
-            
             pause: function() {
                 this.audio.pause();
                 this.isPlaying = false;
                 this.playPauseBtn.innerHTML = '<i class="fas fa-play text-white"></i>';
                 this.saveSettings();
             },
-            
             togglePlay: function() {
                 if (this.isPlaying) {
                     this.pause();
@@ -463,18 +447,14 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     this.play();
                 }
             },
-            
             nextTrack: function() {
                 if (this.playlist.length === 0) return;
-                
                 this.currentTrack = (this.currentTrack + 1) % this.playlist.length;
                 this.loadTrack();
-                
                 if (this.isPlaying) {
                     this.play();
                 }
             },
-            
             saveSettings: function() {
                 fetch('update_music_settings.php', {
                     method: 'POST',
@@ -482,7 +462,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        is_music_on: this.isPlaying ? 1 : 0, // Ensure boolean is converted to 1 or 0
+                        is_music_on: this.isPlaying ? 1 : 0,
                         current_track: this.currentTrack,
                         volume: Math.round(this.volume * 100)
                     })
@@ -490,42 +470,73 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             }
         };
 
-        // Initialize music player and particles
+        // Fungsi untuk menyembunyikan kuis dan mencatat di localStorage
+        function hideQuizCard(quizId) {
+            const card = document.getElementById(`quiz-card-${quizId}`);
+            if (card) {
+                card.style.display = 'none'; // Sembunyikan kartu secara instan
+
+                // Simpan ID kuis yang disembunyikan ke localStorage
+                let hiddenQuizzes = JSON.parse(localStorage.getItem('hiddenQuizzes')) || [];
+                if (!hiddenQuizzes.includes(quizId)) {
+                    hiddenQuizzes.push(quizId);
+                    localStorage.setItem('hiddenQuizzes', JSON.stringify(hiddenQuizzes));
+                }
+            }
+        }
+
+        // Fungsi untuk menampilkan semua kuis yang tersembunyi
+        function showAllQuizzes() {
+            // Hapus semua status tersembunyi dari localStorage
+            localStorage.removeItem('hiddenQuizzes');
+
+            // Tampilkan kembali semua kartu kuis
+            const quizCards = document.querySelectorAll('[id^="quiz-card-"]');
+            quizCards.forEach(card => {
+                card.style.display = ''; // Mengembalikan ke display default (block/flex)
+            });
+            // Tidak ada notifikasi
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             musicPlayer.init();
             
-            // Create animated particles
+            // Logika partikel (tidak ada perubahan)
             const particlesContainer = document.getElementById('particles');
-            const particleCount = 30; // Number of particles
-            
+            const particleCount = 30; 
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('particle');
-                
-                // Random size between 2px and 10px
                 const size = Math.random() * 8 + 2;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                
-                // Random position
                 particle.style.left = `${Math.random() * 100}%`;
                 particle.style.top = `${Math.random() * 100}%`;
-                
-                // Random animation duration
                 particle.style.animationDuration = `${Math.random() * 20 + 10}s`;
                 particle.style.animationDelay = `${Math.random() * 5}s`;
-                
                 particlesContainer.appendChild(particle);
             }
+
+            // Saat halaman dimuat, sembunyikan kuis yang ada di localStorage
+            const hiddenQuizzesOnLoad = JSON.parse(localStorage.getItem('hiddenQuizzes')) || [];
+            hiddenQuizzesOnLoad.forEach(quizId => {
+                const card = document.getElementById(`quiz-card-${quizId}`);
+                if (card) {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Event listener untuk tombol reset
+            document.getElementById('resetQuizzesBtn').addEventListener('click', showAllQuizzes);
         });
 
+        // Fungsi modal dan notifikasi (tidak ada perubahan)
         function openEditModal(id, name) {
             document.getElementById('editQuizId').value = id;
             document.getElementById('editQuizName').value = name;
             document.getElementById('editModal').classList.remove('hidden');
         }
 
-        // Close modal when clicking outside (improved for existing modal setup)
         document.getElementById('modal').addEventListener('click', function(event) {
             if (event.target === this) {
                 this.classList.add('hidden');
@@ -537,14 +548,13 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             }
         });
 
-        // Hide notification after a few seconds
         const notifElement = document.getElementById('notif');
         if (notifElement) {
             setTimeout(() => {
                 notifElement.style.opacity = '0';
                 notifElement.style.transform = 'translateY(-20px)';
-                setTimeout(() => notifElement.remove(), 500); // Remove after transition
-            }, 3000); // Hide after 3 seconds
+                setTimeout(() => notifElement.remove(), 500);
+            }, 3000);
         }
     </script>
 </body>
