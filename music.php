@@ -34,6 +34,7 @@ $songs = $stmt->get_result();
     <meta charset="UTF-8">
     <title>Daftar Lagu</title>
     <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="icon" href="logo.png" type="image/png">
 </head>
 <body class="bg-gray-100 p-6">
     <h1 class="text-3xl font-bold mb-6">Daftar Lagu</h1>

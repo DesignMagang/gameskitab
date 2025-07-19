@@ -116,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['question_text'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Survival Game: <?= htmlspecialchars($sessionData['session_name']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="icon" href="logo.png" type="image/png">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         @keyframes gradientBG {

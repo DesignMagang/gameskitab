@@ -99,6 +99,7 @@ $playlist_json = json_encode($playlist);
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <link rel="icon" href="logo.png" type="image/png">
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -468,21 +469,11 @@ $playlist_json = json_encode($playlist);
         const finalTeamName = document.getElementById('finalTeamName');
         const playAgainBtn = document.getElementById('playAgainBtn');
 
-        const correctAnswerModal = document.getElementById('correctAnswerModal');
-        const correctSentenceDisplay = document.getElementById('correctSentenceDisplay');
-        const closeCorrectModalBtn = document.getElementById('closeCorrectModalBtn');
-        
         // Audio Elements
         const countdownSound = document.getElementById('countdownSound');
         const correctAnswerSound = document.getElementById('correctAnswerSound');
         const incorrectAnswerSound = document.getElementById('incorrectAnswerSound');
         const winRoundSound = document.getElementById('winRoundSound'); 
-
-        // Listener for the modal close button
-    closeCorrectModalBtn.addEventListener('click', () => {
-        correctAnswerModal.classList.add('hidden');
-        nextQuestion(); // Proceed to the next question after closing modal
-    });
 
         // Music Player Functionality
         const musicPlayer = {
@@ -1078,7 +1069,5 @@ $playlist_json = json_encode($playlist);
             gameMessage.classList.add('hidden'); 
         }
     </script>
-
-</div>
 </body>
 </html>

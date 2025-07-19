@@ -76,6 +76,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     <title>Pertanyaan Kuis: <?= $quiz_name ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+        <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @keyframes gradientMove {
@@ -187,6 +188,24 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             transition: all 0.5s ease;
         }
         
+        /* General button style for icons */
+        .icon-btn-nav {
+            width: 44px; /* Slightly larger for touch targets */
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem; /* Rounded corners for the button */
+            transition: all 0.2s ease-in-out;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.25rem; /* Adjust icon size */
+        }
+
+        .icon-btn-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+        }
+
         .btn-glow {
             box-shadow: 0 0 10px rgba(100, 108, 255, 0.5);
             transition: all 0.3s ease;
@@ -298,9 +317,14 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             color: #E0E7FF; /* Light blue-purple for modal titles */
             text-shadow: 0 0 5px rgba(100, 108, 255, 0.5);
         }
+
+        /* Style for clickable timer */
+        .cursor-pointer {
+            cursor: pointer;
+        }
     </style>
 </head>
-<body class="p-6 relative overflow-hidden flex flex-col items-center justify-center min-h-screen">
+<body class="p-6 relative overflow-y-auto flex flex-col items-center justify-center min-h-screen">
     <div class="stars"></div>
     <div class="particles" id="particles"></div>
     
@@ -310,17 +334,26 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                 Kuis: <span class="text-amber-300"><?= $quiz_name ?></span>
             </h1>
             <div class="flex gap-3 flex-wrap items-center">
-                <a href="quiz.php" class="btn-glow bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
-                    ← Kembali 
+                <a href="quiz.php" title="Kembali"
+                   class="btn-glow bg-gray-800 text-white icon-btn-nav hover:bg-gray-700">
+                    <i class="fas fa-arrow-left"></i>
                 </a>
+                
                 <button onclick="document.getElementById('addQuestionModal').classList.remove('hidden')" 
-                        class="btn-glow bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all">
-                    + Pertanyaan
+                        title="Tambah Pertanyaan"
+                        class="btn-glow bg-gradient-to-r from-green-500 to-emerald-500 text-white icon-btn-nav hover:from-green-600 hover:to-emerald-600">
+                    <i class="fas fa-plus"></i>
                 </button>
-                <?php if ($first_question): // Hanya tampilkan tombol edit jika ada pertanyaan ?>
+
+                <?php if ($first_question): // Hanya tampilkan tombol edit dan timer jika ada pertanyaan ?>
                 <button onclick="document.getElementById('editQuestionModal').classList.remove('hidden')" 
-                        class="btn-glow bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 px-4 py-2 rounded-lg font-bold hover:from-yellow-500 hover:to-amber-600 transition-all">
-                    Edit Pertanyaan
+                        title="Edit Pertanyaan"
+                        class="btn-glow bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 icon-btn-nav hover:from-yellow-500 hover:to-amber-600">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+                <span id="quizTimer" class="text-white text-2xl font-bold bg-gray-900 px-4 py-2 rounded-lg shadow-md border border-gray-700 cursor-pointer">00:00</span>
+                <button id="fullscreenBtn" class="btn-glow bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-4 py-2 rounded-lg font-bold hover:from-purple-600 hover:to-indigo-600 transition-all" title="Perbesar Layar">
+                    <i class="fas fa-expand"></i>
                 </button>
                 <?php endif; ?>
             </div>
@@ -342,8 +375,8 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     </div>
 
     <div id="mainQuestionDisplay" 
-         class="main-question-display p-8 rounded-xl w-full max-w-4xl relative animate__animated animate__fadeIn flex flex-col justify-between"
-         style="min-height: 40vh;"> 
+          class="main-question-display p-8 rounded-xl w-full max-w-4xl relative animate__animated animate__fadeIn flex flex-col justify-between"
+          style="min-height: 40vh;"> 
         <?php if ($first_question): ?>
             <div class="absolute top-4 right-4 flex space-x-3">
                 <button id="showAnswerBtn" onclick="toggleAnswer()" title="Tampilkan Jawaban" class="text-green-400 hover:text-green-300 transition-colors">
@@ -382,18 +415,18 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                 <input type="hidden" name="action" value="add_question">
                 <input type="hidden" name="quiz_id" value="<?= $quiz_id?>">
                 <textarea name="question_text" placeholder="Tulis pertanyaan..." required 
-                            class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-y"></textarea>
+                                class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-y"></textarea>
                 
                 <textarea name="answer" placeholder="Tulis jawaban (opsional)" 
-                            class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 h-32 resize-y"></textarea>
+                                class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 h-32 resize-y"></textarea>
                 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="document.getElementById('addQuestionModal').classList.add('hidden')" 
-                                class="btn-glow bg-gray-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
+                                 class="btn-glow bg-gray-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
                         Batal
                     </button>
                     <button type="submit" 
-                                class="btn-glow bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all">
+                                 class="btn-glow bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all">
                         Simpan
                     </button>
                 </div>
@@ -408,18 +441,18 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                 <input type="hidden" name="question_id" value="<?= $first_question ? $first_question['id'] : '' ?>">
                 <input type="hidden" name="quiz_id" value="<?= $quiz_id?>">
                 <textarea name="question_text" placeholder="Tulis pertanyaan..." required 
-                            class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32 resize-y"><?= $first_question ? htmlspecialchars($first_question['question_text']) : '' ?></textarea>
+                                class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32 resize-y"><?= $first_question ? htmlspecialchars($first_question['question_text']) : '' ?></textarea>
                 
                 <textarea name="answer_text" placeholder="Tulis jawaban (opsional)" 
-                            class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 h-32 resize-y"><?= $first_question && isset($first_question['answer']) ? htmlspecialchars($first_question['answer']) : '' ?></textarea>
+                                class="w-full px-4 py-3 bg-gray-800 bg-opacity-50 text-white border border-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 h-32 resize-y"><?= $first_question && isset($first_question['answer']) ? htmlspecialchars($first_question['answer']) : '' ?></textarea>
                 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="document.getElementById('editQuestionModal').classList.add('hidden')" 
-                                class="btn-glow bg-gray-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
+                                 class="btn-glow bg-gray-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
                         Batal
                     </button>
                     <button type="submit" 
-                                class="btn-glow bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 px-4 py-2 rounded-lg font-bold hover:from-yellow-600 hover:to-amber-600 transition-all">
+                                 class="btn-glow bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 px-4 py-2 rounded-lg font-bold hover:from-yellow-600 hover:to-amber-600 transition-all">
                         Simpan Perubahan
                     </button>
                 </div>
@@ -583,6 +616,123 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
         };
 
         musicPlayer.init();
+
+
+        // LOGIC FOR THE TOGGLE TIMER
+        let timeLeft = 60; // Initial time in seconds (e.g., 1 minute)
+        let timerInterval;
+        let isTimerRunning = false; // New variable to track timer state
+        const quizTimerDisplay = document.getElementById('quizTimer');
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay() {
+            quizTimerDisplay.textContent = formatTime(timeLeft);
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                isTimerRunning = false; // Timer has stopped
+                quizTimerDisplay.textContent = "Waktu Habis!";
+                quizTimerDisplay.classList.add('text-red-500'); // Add red color when time runs out
+                // Optional: Disable the timer button when time is up
+                // quizTimerDisplay.removeEventListener('click', toggleTimer); 
+            } else if (!isTimerRunning) {
+                 // If timer is paused and not 0, display "PAUSED" or similar, but keep current time
+                 quizTimerDisplay.textContent = formatTime(timeLeft + 1) + " (PAUSED)"; // Add 1 because timeLeft was decremented in prev run
+                 quizTimerDisplay.classList.add('text-yellow-500'); // Indicate paused state
+                 quizTimerDisplay.classList.remove('text-red-500');
+            } else {
+                quizTimerDisplay.classList.remove('text-red-500', 'text-yellow-500'); // Remove paused/expired color
+            }
+            timeLeft--;
+        }
+
+        function startQuestionTimer() {
+            if (isTimerRunning) return; // Prevent starting if already running
+
+            isTimerRunning = true;
+            quizTimerDisplay.classList.remove('text-red-500', 'text-yellow-500'); // Clean up any previous state colors
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay(); // Call immediately to show current time
+        }
+
+        function pauseQuestionTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            quizTimerDisplay.classList.add('text-yellow-500'); // Indicate paused state
+            quizTimerDisplay.classList.remove('text-red-500');
+            // We need to re-adjust timeLeft if it was just decremented.
+            // If updateTimerDisplay decrements first, then timeLeft will be one less than what it was when it was *displaying*
+            // To be safe, ensure it shows the time *before* the last decrement.
+            // A more robust way would be to decrement AFTER updating the display, but for now, this simple adjustment works.
+            quizTimerDisplay.textContent = formatTime(timeLeft + 1) + " (PAUSED)"; 
+        }
+
+        function toggleTimer() {
+            const hasQuestion = <?= $first_question ? 'true' : 'false' ?>;
+            if (!hasQuestion) return; // Cannot start timer if no question is loaded
+
+            if (timeLeft < 0) { // If time is already up and countdown finished (timeLeft is -1)
+                // If you want it to restart when clicked after time runs out, uncomment and adjust:
+                // timeLeft = 60; // Reset time
+                // startQuestionTimer();
+                return; // Or just do nothing if time is already up
+            }
+
+            if (isTimerRunning) {
+                pauseQuestionTimer();
+            } else {
+                startQuestionTimer();
+            }
+        }
+
+        // Attach the toggle event listener to the timer span
+        document.addEventListener('DOMContentLoaded', () => {
+            const hasQuestion = <?= $first_question ? 'true' : 'false' ?>;
+            if (hasQuestion) {
+                // Initial display when loaded, assumes timer starts automatically
+                startQuestionTimer(); 
+                quizTimerDisplay.addEventListener('click', toggleTimer);
+            } else {
+                quizTimerDisplay.textContent = "N/A"; // No question, no timer
+                quizTimerDisplay.style.cursor = "default"; // No click action
+            }
+        });
+
+        // LOGIC FOR FULLSCREEN BUTTON
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const fullscreenIcon = fullscreenBtn ? fullscreenBtn.querySelector('i') : null;
+
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+            // Listen for fullscreen change event to update the icon
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    fullscreenIcon.classList.remove('fa-expand');
+                    fullscreenIcon.classList.add('fa-compress');
+                    fullscreenBtn.title = 'Kecilkan Layar';
+                } else {
+                    fullscreenIcon.classList.remove('fa-compress');
+                    fullscreenIcon.classList.add('fa-expand');
+                    fullscreenBtn.title = 'Perbesar Layar';
+                }
+            });
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
     </script>
 </body>
 </html>

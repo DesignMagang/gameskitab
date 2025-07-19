@@ -61,6 +61,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     <meta charset="UTF-8">
     <title>Quiz Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @keyframes gradientMove {
@@ -245,13 +246,12 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     <button onclick="document.getElementById('modal').classList.remove('hidden')" 
                             class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 font-extrabold transition-all duration-300 hover:scale-110">
                         <svg xmlns="http://www.w3.org/2000/svg" 
-                            class="h-6 w-6 inline-block font-black"  
+                            class="h-6 w-6 inline-block font-black"  
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor" 
                             stroke-width="3">
                             <path stroke-linecap="round" 
-                                stroke-linejoin="round" 
                                 d="M12 4v16m8-8H4" />
                         </svg>
                     </button>
@@ -259,6 +259,9 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                     <button id="resetQuizzesBtn" 
                             class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 font-extrabold transition-all duration-300 hover:scale-110">
                         <i class="fas fa-redo-alt inline-block font-black"></i> Reset
+                    </button>
+                    <button id="fullscreenBtn" class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:from-teal-600 hover:to-emerald-600 font-extrabold transition-all duration-300 hover:scale-110" title="Perbesar Layar">
+                        <i class="fas fa-expand inline-block font-black"></i>
                     </button>
                 </div>
             </div>
@@ -306,11 +309,11 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                                  class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <div class="flex justify-end gap-2">
                             <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" 
-                                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
+                                         class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
                                 Batal
                             </button>
                             <button type="submit" 
-                                        class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded hover:from-blue-600 hover:to-cyan-600 transition-all duration-300">
+                                         class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded hover:from-blue-600 hover:to-cyan-600 transition-all duration-300">
                                 Simpan
                             </button>
                         </div>
@@ -327,11 +330,11 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                                  class="w-full px-3 py-2 border border-gray-600 rounded mb-4 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
                         <div class="flex justify-end gap-2">
                             <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')" 
-                                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
+                                         class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors duration-300">
                                 Batal
                             </button>
                             <button type="submit" 
-                                        class="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded hover:from-yellow-600 hover:to-amber-600 transition-all duration-300">
+                                         class="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded hover:from-yellow-600 hover:to-amber-600 transition-all duration-300">
                                 Simpan Perubahan
                             </button>
                         </div>
@@ -352,8 +355,8 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
 
                                 <div class="flex items-center gap-2 mt-2">
                                     <button onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>')" 
-                                        class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300" title="Edit">
-                                        <i class="fas fa-pen"></i>
+                                            class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300" title="Edit">
+                                            <i class="fas fa-pen"></i>
                                     </button>
                                     <form action="delete_quiz.php" method="POST" onsubmit="return confirm('Yakin ingin menghapus kuis ini?');">
                                         <input type="hidden" name="quiz_id" value="<?= $row['id'] ?>">
@@ -528,6 +531,38 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
 
             // Event listener untuk tombol reset
             document.getElementById('resetQuizzesBtn').addEventListener('click', showAllQuizzes);
+
+            // LOGIC FOR FULLSCREEN BUTTON (NEW)
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const fullscreenIcon = fullscreenBtn ? fullscreenBtn.querySelector('i') : null;
+
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+                // Listen for fullscreen change event to update the icon
+                document.addEventListener('fullscreenchange', () => {
+                    if (document.fullscreenElement) {
+                        fullscreenIcon.classList.remove('fa-expand');
+                        fullscreenIcon.classList.add('fa-compress');
+                        fullscreenBtn.title = 'Kecilkan Layar';
+                    } else {
+                        fullscreenIcon.classList.remove('fa-compress');
+                        fullscreenIcon.classList.add('fa-expand');
+                        fullscreenBtn.title = 'Perbesar Layar';
+                    }
+                });
+            }
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) { // If not in fullscreen mode
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
+                        alert("Gagal masuk mode layar penuh. Browser Anda mungkin memblokirnya atau membutuhkan interaksi pengguna langsung.");
+                    });
+                } else { // If in fullscreen mode
+                    document.exitFullscreen();
+                }
+            }
         });
 
         // Fungsi modal dan notifikasi (tidak ada perubahan)

@@ -35,6 +35,8 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     <title>Kategori</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <link rel="icon" href="logo.png" type="image/png">
+
     <style>
         @keyframes gradientMove {
             0% {
@@ -187,20 +189,31 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
             align-items: center;
             justify-content: center;
         }
+
+        /* Fullscreen styles */
+        body:-webkit-full-screen {
+            background-color: #0f172a; /* Or your desired fullscreen background */
+        }
+        body:-moz-full-screen {
+            background-color: #0f172a;
+        }
+        body:-ms-fullscreen {
+            background-color: #0f172a;
+        }
+        body:fullscreen {
+            background-color: #0f172a;
+        }
     </style>
 </head>
 
 <body class="relative h-screen bg-gray-900 overflow-hidden">
-
 <!-- Perintah memasukan lagu ke database -->
 <!-- INSERT INTO background_music (file_name, file_path, display_name) 
 VALUES 
     ('Segala_Perkara.mp3', 'music/Segala_Perkara.mp3', 'Lagu Rohani'); -->
 
-    <!-- Animated Background Particles -->
-    <div class="bg-particles" id="particles"></div>
+<div class="bg-particles" id="particles"></div>
 
-    <!-- Main Content -->
     <div class="relative z-10 w-full h-full p-6">
         <div class="p-6 rounded-lg w-full h-full">
             <div class="flex justify-between items-center mb-6">
@@ -208,11 +221,15 @@ VALUES
                     KATEGORI
                 </a>
                 <div class="flex items-center space-x-4">
-                    <!-- Tombol tambah -->
+                    <button type="button" onclick="toggleFullscreen()" id="fullscreenButton"
+                            class="rounded-lg p-2 font-black bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 font-extrabold transition-all duration-300 hover:scale-110 flex items-center justify-center w-10 h-10">
+                        <i class="fas fa-expand" id="fullscreenIcon"></i>
+                    </button>
+
                     <button onclick="document.getElementById('modal').classList.remove('hidden')" 
-                            class="rounded-lg px-2 py-1 font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 font-extrabold transition-all duration-300 hover:scale-110">
+                            class="rounded-lg p-2 font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 font-extrabold transition-all duration-300 hover:scale-110 flex items-center justify-center w-10 h-10">
                         <svg xmlns="http://www.w3.org/2000/svg" 
-                            class="h-6 w-6 inline-block font-black"  
+                            class="h-6 w-6 font-black"  
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor" 
@@ -223,12 +240,9 @@ VALUES
                         </svg>
                     </button>
 
-                    <span class="font-semibold text-2xl animated-gradient-text hover:text-shadow-lg transition-all duration-300">
-                        <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
-                    </span>
-
-                    <a href="logout.php" class="animated-gradient-text text-2xl hover:underline font-semibold hover:scale-105 transition-transform duration-300">
-                        Keluar
+                    <a href="logout.php" title="Keluar" 
+                       class="rounded-lg p-2 bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-600 hover:to-rose-600 font-extrabold transition-all duration-300 hover:scale-110 flex items-center justify-center w-10 h-10">
+                        <i class="fas fa-sign-out-alt text-xl"></i>
                     </a>
                 </div>
             </div>
@@ -251,7 +265,6 @@ VALUES
                 </script>
             <?php endif; ?>
 
-            <!-- Modal Tambah -->
             <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 backdrop-blur-sm">
                 <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 transform transition-all duration-300 animate-fade-in">
                     <h2 class="text-xl font-semibold mb-4 text-white">Tambah Kategori</h2>
@@ -272,7 +285,6 @@ VALUES
                 </div>
             </div>
 
-            <!-- Modal Edit -->
             <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 backdrop-blur-sm">
                 <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 transform transition-all duration-300 animate-fade-in">
                     <h2 class="text-xl font-semibold mb-4 text-white">Edit Kategori</h2>
@@ -294,15 +306,13 @@ VALUES
                 </div>
             </div>
 
-            <!-- Grid Kategori -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
                 <?php if ($result->num_rows > 0): ?>
                     <?php while ($row = $result->fetch_assoc()): ?>
                         <div class="gradient-border bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col justify-between glow-card hover:bg-gray-700 transition-all duration-300">
-                            <!-- Kumpulan kategori -->
                             <div class="flex justify-between items-start">
                                 <a href="category.php?id=<?= $row['id'] ?>" class="text-2xl font-bold hover:no-underline break-words text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all duration-300">
-                                   <?= htmlspecialchars($row['name']) ?>
+                                    <?= htmlspecialchars($row['name']) ?>
                                 </a>
 
                                 <div class="flex items-center gap-2 mt-2">
@@ -327,7 +337,6 @@ VALUES
         </div>
     </div>
 
-    <!-- Music Player -->
     <div class="music-player" id="musicPlayer">
         <div class="music-btn" id="playPauseBtn">
             <i class="fas <?= $music_settings['is_music_on'] ? 'fa-pause' : 'fa-play' ?> text-white"></i>
@@ -471,6 +480,60 @@ VALUES
             document.getElementById('editCategoryName').value = name;
             document.getElementById('editModal').classList.remove('hidden');
         }
+
+        // --- Fullscreen Functions ---
+        function toggleFullscreen() {
+            const element = document.documentElement; // Target the entire HTML document
+            
+            if (document.fullscreenElement) {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) { // Firefox
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) { // Chrome, Safari and Opera
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { // IE/Edge
+                    document.msExitFullscreen();
+                }
+            } else {
+                // Enter fullscreen
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.mozRequestFullScreen) { // Firefox
+                    element.mozRequestFullScreen();
+                } else if (element.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) { // IE/Edge
+                    element.msRequestFullscreen();
+                }
+            }
+        }
+
+        // Listen for fullscreen change events to update button text/icon
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+        document.addEventListener('msfullscreenchange', updateFullscreenButton);
+
+        function updateFullscreenButton() {
+            const fullscreenButton = document.getElementById('fullscreenButton');
+            const fullscreenIcon = document.getElementById('fullscreenIcon');
+            // Remove text from the button, only keep the icon
+            fullscreenButton.textContent = ''; 
+            fullscreenButton.appendChild(fullscreenIcon); // Re-add the icon if it was removed
+            
+            if (document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                fullscreenIcon.classList.remove('fa-expand');
+                fullscreenIcon.classList.add('fa-compress');
+            } else {
+                fullscreenIcon.classList.remove('fa-compress');
+                fullscreenIcon.classList.add('fa-expand');
+            }
+        }
+
+        // Initial call to set the correct button state when page loads
+        document.addEventListener('DOMContentLoaded', updateFullscreenButton);
     </script>
 </body>
 </html>

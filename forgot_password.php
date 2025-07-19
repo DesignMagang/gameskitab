@@ -1,4 +1,3 @@
-forgot_password.php
 <?php
 include 'db.php';
 session_start();
@@ -52,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Password - Game Alkitab</title>
   <script src="https://cdn.tailwindcss.com"></script>
+      <link rel="icon" href="logo.png" type="image/png">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;600&display=swap');
     

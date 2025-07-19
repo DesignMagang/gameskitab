@@ -66,6 +66,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
     <title>Preview: <?= htmlspecialchars($sessionData['session_name']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+        <link rel="icon" href="logo.png" type="image/png">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         @keyframes fadeIn {
