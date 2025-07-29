@@ -65,21 +65,6 @@ try {
     ksort($all_questions_by_round);
     sort($all_rounds); // Urutkan nomor ronde
 
-    // Ambil pengaturan musik
-    $music_settings = $conn->query("SELECT * FROM music_settings WHERE user_id = $userId")->fetch_assoc();
-    if (!$music_settings) {
-        // Buat pengaturan default jika tidak ada
-        // Menggunakan INSERT IGNORE untuk mencegah duplikasi jika kode ini dijalankan berkali-kali
-        $conn->query("INSERT IGNORE INTO music_settings (user_id, is_music_on, volume, current_track) VALUES ($userId, 1, 50, 0)"); 
-        $music_settings = ['is_music_on' => 1, 'volume' => 50, 'current_track' => 0]; // Default values if new entry
-    }
-
-    // Ambil playlist aktif
-    $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORDER BY display_name")->fetch_all(MYSQLI_ASSOC);
-    if (!$playlist) { // Handle case where no active music in DB
-        $playlist = [];
-    }
-
 
 } catch (Exception $e) {
     die("Error saat memuat sesi: " . $e->getMessage());
@@ -87,7 +72,6 @@ try {
 
 // Encode semua data pertanyaan ke JSON untuk JavaScript
 $questions_json = json_encode($all_questions_by_round);
-$playlist_json = json_encode($playlist);
 ?>
 
 <!DOCTYPE html>
@@ -269,66 +253,6 @@ $playlist_json = json_encode($playlist);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
         }
 
-        /* Music Player Styles */
-        .music-player {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 50px;
-            padding: 10px 15px;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-        }
-        .music-player:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-        .music-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: rgba(255,255,255,0.1);
-        }
-        .music-btn:hover {
-            background: rgba(255,255,255,0.2);
-            transform: scale(1.1);
-        }
-        .music-info {
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .now-playing {
-            font-weight: bold;
-            font-size: 14px;
-            color: white;
-        }
-        .track-info {
-            font-size: 12px;
-            color: rgba(255,255,255,0.7);
-        }
-        @media (max-width: 576px) {
-            .music-player {
-                bottom: 10px;
-                right: 10px;
-                padding: 8px 12px;
-            }
-            .music-info {
-                display: none;
-            }
-        }
         /* Style for the check button per question */
         .question-check-btn {
             background: #4a90e2; /* A nice blue */
@@ -360,6 +284,60 @@ $playlist_json = json_encode($playlist);
         .question-correct .question-check-btn {
             display: none; /* Hide button when correct */
         }
+        /* Styles for custom modal */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .custom-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .custom-modal-content {
+            background-color: #1e293b; /* Dark slate background */
+            padding: 2rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            border: 1px solid #334155; /* Slate-700 */
+            max-width: 400px;
+            width: 90%;
+            color: #e2e8f0;
+        }
+        .custom-modal-content h3 {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+        .custom-modal-content p {
+            margin-bottom: 1.5rem;
+            color: #cbd5e1; /* Slate-300 */
+        }
+        .custom-modal-content button {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .custom-modal-content button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(29, 78, 216, 0.4);
+        }
     </style>
 </head>
 <body class="relative flex flex-col items-center justify-center min-h-screen px-4 bg-cover bg-center pb-12">
@@ -367,20 +345,7 @@ $playlist_json = json_encode($playlist);
         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')]"></div>
     </div>
 
-    <div class="music-player" id="musicPlayer">
-        <div class="music-btn" id="playPauseBtn">
-            <i class="fas <?= $music_settings['is_music_on'] ? 'fa-pause' : 'fa-play' ?> text-white"></i>
-        </div>
-        <div class="music-info">
-            <div class="now-playing" id="nowPlaying">
-                <?= count($playlist) > 0 ? htmlspecialchars($playlist[$music_settings['current_track'] ?? 0]['display_name'] ?? 'No track selected') : 'No tracks' ?>
-            </div>
-            <div class="track-info" id="trackInfo">
-                Track <?= count($playlist) > 0 ? (($music_settings['current_track'] ?? 0) + 1) : '0' ?> of <?= count($playlist) ?>
-            </div>
-        </div>
-    </div>
-    <audio id="backgroundMusic" loop></audio> <audio id="countdownSound" src="sounds/countdown.mp3" preload="auto"></audio>
+    <audio id="countdownSound" src="sounds/countdown.mp3" preload="auto"></audio>
     <audio id="correctAnswerSound" src="sounds/correct.mp3" preload="auto"></audio> 
     <audio id="incorrectAnswerSound" src="sounds/incorrect.mp3" preload="auto"></audio> 
     <audio id="winRoundSound" src="sounds/win.mp3" preload="auto"></audio> 
@@ -438,6 +403,15 @@ $playlist_json = json_encode($playlist);
         </div>
     </div>
 
+    <div id="teamNameModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <h3>Nama Tim Kosong!</h3>
+            <p>Harap masukkan nama tim Anda sebelum memulai permainan.</p>
+            <button id="closeTeamNameModalBtn">Oke</button>
+        </div>
+    </div>
+
+
     <script>
         const allQuestionsByRound = <?= $questions_json ?>;
         const allRounds = <?= json_encode($all_rounds) ?>;
@@ -450,7 +424,7 @@ $playlist_json = json_encode($playlist);
         let timerInterval;
         let countdownInterval;
         let canDragDrop = false; 
-        let currentDragItem = null; // Ini adalah deklarasi yang benar dan tunggal
+        let currentDragItem = null; 
         let roundStartTime = 0; // To store the start time of the current round for per-round time calculation
 
         // DOM Elements
@@ -468,105 +442,18 @@ $playlist_json = json_encode($playlist);
         const finalTimeDisplay = document.getElementById('finalTimeDisplay');
         const finalTeamName = document.getElementById('finalTeamName');
         const playAgainBtn = document.getElementById('playAgainBtn');
+        const teamNameModal = document.getElementById('teamNameModal'); // Added
+        const closeTeamNameModalBtn = document.getElementById('closeTeamNameModalBtn'); // Added
 
-        // Audio Elements
+
+        // Audio Elements (hanya menyisakan audio efek game)
         const countdownSound = document.getElementById('countdownSound');
         const correctAnswerSound = document.getElementById('correctAnswerSound');
         const incorrectAnswerSound = document.getElementById('incorrectAnswerSound');
         const winRoundSound = document.getElementById('winRoundSound'); 
 
-        // Music Player Functionality
-        const musicPlayer = {
-            audio: document.getElementById('backgroundMusic'),
-            playPauseBtn: document.getElementById('playPauseBtn'),
-            nowPlaying: document.getElementById('nowPlaying'),
-            trackInfo: document.getElementById('trackInfo'),
-            playlist: <?= $playlist_json ?>,
-            currentTrack: <?= $music_settings['current_track'] ?? 0 ?>, // Added null coalescing for safety
-            isPlaying: <?= $music_settings['is_music_on'] ?? 0 ?>, // Added null coalescing for safety
-            volume: <?= ($music_settings['volume'] ?? 50) / 100 ?>, // Added null coalescing for safety
-            
-            init: function() {
-                console.log("Music Player Init - Playlist length:", this.playlist.length, "Is Playing:", this.isPlaying);
-                if (this.playlist.length > 0) {
-                    this.loadTrack();
-                    if (this.isPlaying) {
-                        this.audio.play().then(() => {
-                            console.log("Music autostarted successfully (after possible initial block).");
-                        }).catch(e => console.log("Music auto-play blocked or failed initially:", e.message));
-                    }
-                }
-                this.playPauseBtn.addEventListener('click', () => this.togglePlay());
-                this.audio.addEventListener('ended', () => this.nextTrack());
-                this.audio.addEventListener('error', (e) => console.error("Audio error:", e.message, this.audio.error));
-            },
-            loadTrack: function() {
-                if (this.playlist.length === 0) {
-                    console.warn("No tracks in playlist to load.");
-                    return;
-                }
-                // Ensure currentTrack is a valid index
-                if (this.currentTrack < 0 || this.currentTrack >= this.playlist.length) {
-                    console.warn(`currentTrack index (${this.currentTrack}) out of bounds. Resetting to 0.`);
-                    this.currentTrack = 0;
-                }
-
-                const track = this.playlist[this.currentTrack];
-                if (!track || !track.file_path) {
-                    console.error("Invalid track or file_path:", track);
-                    return;
-                }
-                this.audio.src = track.file_path;
-                this.audio.volume = this.volume;
-                this.nowPlaying.textContent = track.display_name;
-                this.trackInfo.textContent = `Track ${this.currentTrack + 1} of ${this.playlist.length}`;
-                this.saveSettings();
-                console.log("Track loaded:", track.display_name, "Source:", track.file_path);
-            },
-            play: function() {
-                if (this.playlist.length === 0) {
-                    console.warn("Cannot play, playlist is empty.");
-                    return;
-                }
-                this.audio.play().then(() => {
-                    this.isPlaying = true;
-                    this.playPauseBtn.innerHTML = '<i class="fas fa-pause text-white"></i>';
-                    this.saveSettings();
-                    console.log("Music started playing.");
-                }).catch(error => console.error('Playback failed after user interaction:', error));
-            },
-            pause: function() {
-                this.audio.pause();
-                this.isPlaying = false;
-                this.playPauseBtn.innerHTML = '<i class="fas fa-play text-white"></i>';
-                this.saveSettings();
-                console.log("Music paused.");
-            },
-            togglePlay: function() {
-                console.log("Toggle Play clicked. Current state isPlaying:", this.isPlaying);
-                if (this.isPlaying) { this.pause(); } else { this.play(); }
-            },
-            nextTrack: function() {
-                console.log("Next track.");
-                if (this.playlist.length === 0) return;
-                this.currentTrack = (this.currentTrack + 1) % this.playlist.length;
-                this.loadTrack();
-                if (this.isPlaying) { this.play(); }
-            },
-            saveSettings: function() {
-                fetch('update_music_settings.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_music_on: this.isPlaying ? 1 : 0, current_track: this.currentTrack, volume: Math.round(this.volume * 100) })
-                });
-            }
-        };
-
 
         // --- Game Logic ---
-        // Variabel currentDragItem sudah dideklarasikan di atas. JANGAN DEKLARASIKAN LAGI DI SINI!
-        // let currentDragItem = null; // <-- Baris ini yang dihapus/dihilangkan.
-
         function initRound(roundNum) {
             gameMessage.classList.add('hidden');
             
@@ -672,9 +559,8 @@ $playlist_json = json_encode($playlist);
             });
         }
 
-        // let currentDragItem = null; // BARIS INI TELAH DIHAPUS/DIKOMENTARI KARENA SUDAH ADA DI ATAS
-
         function handleDragStart(e) {
+            // Only allow dragging if the game is active AND the question is NOT already correct
             if (!canDragDrop || e.target.closest('.question-block')?.dataset.isCorrect === 'true') {
                 e.preventDefault(); 
                 return;
@@ -690,6 +576,10 @@ $playlist_json = json_encode($playlist);
                 currentDragItem.classList.remove('opacity-50');
             }
             currentDragItem = null;
+            // After any drag ends, re-check all question buttons
+            document.querySelectorAll('.question-block').forEach(qDiv => {
+                checkIfQuestionReady(qDiv);
+            });
         }
 
         function handleDragOver(e) {
@@ -736,9 +626,9 @@ $playlist_json = json_encode($playlist);
 
             if (!canDragDrop || !currentDragItem || !dropTarget) return;
 
-            // Jika item dijatuhkan kembali ke container asal atau container opsi drag lainnya
+            // If the item is dropped back into its original container or another drag-options container
             if (dropTarget.classList.contains('drag-options-container')) {
-                // Pindahkan item yang sedang ditarik ke dalam container drag-options
+                // Move the dragged item back into the drag-options container
                 dropTarget.appendChild(currentDragItem);
                 currentDragItem = null; // Reset
                 // Check if any question associated with this item needs re-evaluation
@@ -748,7 +638,7 @@ $playlist_json = json_encode($playlist);
                 return;
             }
 
-            // Jika target adalah drop-target-slot
+            // If the target is a drop-target-slot
             if (dropTarget.classList.contains('drop-target-slot')) {
                  if (dropTarget.closest('.question-block')?.dataset.isCorrect === 'true') {
                     // Cannot drop on a slot of a correctly answered question
@@ -759,19 +649,20 @@ $playlist_json = json_encode($playlist);
 
                 const existingItemInSlot = dropTarget.querySelector('.drag-item');
                 if (existingItemInSlot && existingItemInSlot !== currentDragItem) {
-                    // Pindahkan item yang sudah ada kembali ke container asalnya
+                    // Move the existing item back to its original container
                     const originalContainerId = existingItemInSlot.dataset.originalContainerId;
                     const originalContainer = document.getElementById(originalContainerId);
                     if (originalContainer) {
                         originalContainer.appendChild(existingItemInSlot);
                     }
+                    existingItemInSlot.setAttribute('draggable', true); // Make it draggable again
+                    existingItemInSlot.classList.remove('disabled'); // Remove disabled state
                 }
                 
-                // --- Perbaikan di sini: Hapus konten lama sebelum menambahkan yang baru ---
-                // Bersihkan slot sebelum menambahkan item baru
-                dropTarget.textContent = ''; // Hapus teks placeholder (misalnya '_____')
+                // Clear the slot before adding the new item
+                dropTarget.textContent = ''; // Remove placeholder text (e.g., '_____')
 
-                // Letakkan item yang sedang ditarik ke dalam slot
+                // Place the dragged item into the slot
                 dropTarget.appendChild(currentDragItem);
                 checkIfQuestionReady(dropTarget.closest('.question-block'));
             }
@@ -783,6 +674,12 @@ $playlist_json = json_encode($playlist);
             const dropTargetsWrapper = questionDivElement.querySelector('.drop-targets-wrapper');
             const checkButton = questionDivElement.querySelector('.question-check-btn');
             
+            // Only enable check button if the question is not already correct
+            if (questionDivElement.dataset.isCorrect === 'true') {
+                checkButton.classList.add('hidden');
+                return;
+            }
+
             let allSlotsFilled = true;
             dropTargetsWrapper.querySelectorAll('.drop-target-slot').forEach(slot => {
                 if (!slot.querySelector('.drag-item')) { // Check for 'drag-item'
@@ -807,20 +704,24 @@ $playlist_json = json_encode($playlist);
             const correctPartsForQuestion = currentQuestionData.correct_answer.split(/(\s+|[,.]\s*)/).filter(part => part.trim() !== '');
 
             let allPartsCorrect = true;
-            let allSlotsFilled = true; // Ensure all slots are filled before checking correctness
+            let allSlotsFilled = true; 
 
             dropTargetsWrapper.querySelectorAll('.drop-target-slot').forEach((slot, slotIndex) => {
                 slot.classList.remove('correct', 'incorrect'); 
                 const expectedPart = correctPartsForQuestion[slotIndex].toLowerCase().trim();
-                const droppedItem = slot.querySelector('.drag-item'); // Changed to drag-item
+                const droppedItem = slot.querySelector('.drag-item'); 
 
                 if (droppedItem) {
                     const actualPart = droppedItem.textContent.toLowerCase().trim();
                     if (actualPart === expectedPart) {
                         slot.classList.add('correct');
+                        // No changes to draggable or disabled state yet
                     } else {
                         slot.classList.add('incorrect');
                         allPartsCorrect = false;
+                        // Keep draggable if incorrect
+                        droppedItem.setAttribute('draggable', true);
+                        droppedItem.classList.remove('disabled');
                     }
                 } else {
                     allSlotsFilled = false; 
@@ -832,7 +733,7 @@ $playlist_json = json_encode($playlist);
                  questionFeedback.textContent = 'Silakan isi semua kotak kosong terlebih dahulu.';
                  questionFeedback.className = 'question-feedback mt-3 text-center font-bold message-info';
                  questionFeedback.classList.remove('hidden');
-                 incorrectAnswerSound.play(); // Or a different sound for incomplete
+                 incorrectAnswerSound.play(); 
                  return;
             }
 
@@ -846,28 +747,34 @@ $playlist_json = json_encode($playlist);
                 questionDivElement.classList.add('question-correct'); 
                 checkButton.style.display = 'none'; 
                 
-                // Menonaktifkan drag/drop untuk slot yang sudah benar
+                // Disable drag/drop for correctly answered slots and their items
                 dropTargetsWrapper.querySelectorAll('.drop-target-slot').forEach(slot => {
-                    slot.style.pointerEvents = 'none'; 
+                    slot.style.pointerEvents = 'none'; // Disable interaction with the slot
                     const itemInSlot = slot.querySelector('.drag-item');
                     if(itemInSlot) {
-                        itemInSlot.setAttribute('draggable', 'false'); // Item di dalam slot tidak bisa ditarik lagi
-                        itemInSlot.classList.add('disabled');
+                        itemInSlot.setAttribute('draggable', 'false'); // Item in slot cannot be dragged anymore
+                        itemInSlot.classList.add('disabled'); // Add disabled visual style
                     }
                 });
-                // Menonaktifkan item yang tersisa di container opsi drag untuk pertanyaan ini
+                // Disable any remaining items in the drag options container for this question
                 questionDivElement.querySelector('.drag-options-container').querySelectorAll('.drag-item').forEach(item => {
                     item.setAttribute('draggable', 'false');
                     item.classList.add('disabled');
                 });
 
 
-                // Setelah satu soal benar, cek apakah semua soal di ronde ini sudah benar
-                await checkRoundCompletion(); // Menggunakan await karena checkRoundCompletion bisa async
+                // After one question is correct, check if all questions in this round are correct
+                await checkRoundCompletion(); 
             } else {
                 questionFeedback.textContent = 'Jawaban Salah. Silakan coba lagi.';
                 questionFeedback.className = 'question-feedback mt-3 text-center font-bold message-error';
                 incorrectAnswerSound.play();
+                
+                // IMPORTANT CHANGE: Re-enable drag for incorrect items
+                // The loop above already handles adding 'incorrect' class.
+                // Now, ensure items marked 'incorrect' are draggable.
+                // We don't need to specifically re-enable here, as we didn't disable them if incorrect.
+                // The key is that `handleDragStart` only prevents dragging for `question-correct` blocks.
             }
             questionFeedback.classList.remove('hidden');
         }
@@ -899,18 +806,17 @@ $playlist_json = json_encode($playlist);
 
                 // Show modal temporarily then redirect after a short delay
                 showEndGameModal(roundCompletionTime);
+                // Redirect after 1 second
                 setTimeout(() => {
-                    // Redirect to the results page
                     window.location.href = `dragdrop_result.php?sessionid=${sessionId}`;
-                }, 3000); // Redirect after 3 seconds
+                }, 1000); // 1 second delay
             }
         }
 
         function startGameCountdown() {
             currentTeamName = teamNameInput.value.trim();
             if (!currentTeamName) {
-                alert("Silakan masukkan nama tim terlebih dahulu!");
-                // Tidak menyembunyikan tombol 'Play' di sini agar pengguna bisa mencoba lagi
+                showTeamNameModal(); // Show custom modal instead of alert
                 return; 
             }
             teamNameInput.disabled = true;
@@ -944,7 +850,6 @@ $playlist_json = json_encode($playlist);
             canDragDrop = true; 
             roundStartTime = gameTime; // Reset round start time
             startTimer(); 
-            musicPlayer.play(); 
             
             initRound(currentRound); // (Re)initialize the current round
         }
@@ -1020,8 +925,18 @@ $playlist_json = json_encode($playlist);
             }
         }
         
+        // Custom Modal Functions
+        function showTeamNameModal() {
+            teamNameModal.classList.add('show');
+        }
+
+        function hideTeamNameModal() {
+            teamNameModal.classList.remove('show');
+        }
+
         // Event Listeners
         playBtn.addEventListener('click', startGameCountdown);
+        closeTeamNameModalBtn.addEventListener('click', hideTeamNameModal); // Added
 
         roundSelect.addEventListener('change', function() {
             if (gameStarted) {
@@ -1052,7 +967,6 @@ $playlist_json = json_encode($playlist);
 
             initRound(currentRound); 
             hideGameContent(); 
-            musicPlayer.init();
         });
 
         function showEndGameModal(completionTime) {

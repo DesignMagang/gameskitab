@@ -17,6 +17,7 @@ $session_name = '';
 
 try {
     // Ambil nama sesi
+    
     $stmt_session = $conn->prepare("SELECT session_name FROM dragdrop_sessions WHERE sessionid = ?");
     $stmt_session->bind_param("s", $sessionId);
     $stmt_session->execute();
@@ -59,7 +60,7 @@ try {
         .refresh-btn {
             background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); /* Orange gradient */
             transition: all 0.3s ease;
-            letter-spacing: 0.5px;
+            /* letter-spacing: 0.5px; Removed for icon only */
         }
         .refresh-btn:hover {
             transform: translateY(-2px);
@@ -98,17 +99,7 @@ try {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .delete-btn {
-            background-color: #ef4444; /* Red-500 */
-            color: white;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.375rem;
-            font-size: 0.875rem;
-            transition: background-color 0.2s ease;
-        }
-        .delete-btn:hover {
-            background-color: #dc2626; /* Red-600 */
-        }
+        /* .delete-btn { Removed entirely } */
         .round-table-container {
             margin-top: 2rem;
             padding-top: 1.5rem;
@@ -137,11 +128,12 @@ try {
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-white" id="mainTableTitle">Peringkat Akhir Tim</h2>
                 <div class="flex space-x-3">
-                    <button id="refreshResultsBtn" class="py-2 px-4 refresh-btn text-white font-semibold rounded-lg flex items-center">
-                        <i class="fas fa-sync-alt mr-2"></i> Auto-Refresh
-                    </button>
+                    <button id="refreshResultsBtn" class="py-2 px-3 refresh-btn text-white font-semibold rounded-lg flex items-center">
+                        <!-- refresh -->
+                        <i class="fas fa-sync-alt"></i> </button>
                     <button onclick="window.location.href='index.php'" class="py-2 px-4 back-btn text-white font-semibold rounded-lg">
-                        <i class="fas fa-home mr-2"></i> Kembali ke Dashboard
+                        <!-- dashboard -->
+                        <i class="fas fa-home mr-2"></i> 
                     </button>
                 </div>
             </div>
@@ -233,8 +225,7 @@ try {
                                         <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Nama Tim</th>
                                         <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu</th>
                                         <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu Submit</th>
-                                        <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Aksi</th>
-                                    </tr>
+                                        </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-700">
                         `;
@@ -258,12 +249,7 @@ try {
                                     <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${result.team_name}</td>
                                     <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${formatTime(result.time_taken)}</td>
                                     <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${new Date(result.submission_time).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                    <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
-                                        <button class="delete-btn" data-id="${result.id}">
-                                            <i class="fas fa-trash"></i> Hapus
-                                        </button>
-                                    </td>
-                                </tr>
+                                    </tr>
                             `;
                         });
 
@@ -308,8 +294,7 @@ try {
                                                 <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Nama Tim</th>
                                                 <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu</th>
                                                 <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Waktu Submit</th>
-                                                <th class="py-3 px-4 text-left text-white font-bold text-sm uppercase tracking-wider">Aksi</th>
-                                            </tr>
+                                                </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-700">
                             `;
@@ -333,12 +318,7 @@ try {
                                         <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${result.team_name}</td>
                                         <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${formatTime(result.time_taken)}</td>
                                         <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">${new Date(result.submission_time).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                        <td class="py-3 px-4 whitespace-nowrap text-sm text-slate-200">
-                                            <button class="delete-btn" data-id="${result.id}">
-                                                <i class="fas fa-trash"></i> Hapus
-                                            </button>
-                                        </td>
-                                    </tr>
+                                        </tr>
                                 `;
                             });
 
@@ -354,18 +334,8 @@ try {
                     // If no final scores and no round scores, show no results message
                     if (finalScores.length === 0 && roundScores.length === 0) {
                         noResultsMessage.classList.remove('hidden');
-                    } else {
-                        // Add event listeners for all delete buttons after all tables are rendered
-                        document.querySelectorAll('.delete-btn').forEach(button => {
-                            button.addEventListener('click', (event) => {
-                                const resultId = event.currentTarget.dataset.id;
-                                if (confirm('Apakah Anda yakin ingin menghapus hasil ini?')) {
-                                    deleteResult(resultId);
-                                }
-                            });
-                        });
-                    }
-
+                    } 
+                    // No need to add delete button event listeners as delete functionality is removed
                 } else {
                     noResultsMessage.classList.remove('hidden');
                 }
@@ -376,7 +346,8 @@ try {
             }
         }
 
-        // Function to delete a result
+        // Function to delete a result - REMOVED AS PER USER REQUEST
+        /*
         async function deleteResult(resultId) {
             try {
                 const response = await fetch('delete_dragdrop_result.php', {
@@ -386,19 +357,25 @@ try {
                     },
                     body: JSON.stringify({ id: resultId })
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
                 const data = await response.json();
 
                 if (data.success) {
                     alert('Hasil berhasil dihapus!');
                     fetchAndDisplayResults(false); // Refresh results after deletion
                 } else {
-                    alert('Gagal menghapus hasil: ' + data.message);
+                    alert('Gagal menghapus hasil: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error deleting result:', error);
-                alert('Terjadi kesalahan saat menghapus hasil.');
+                alert('Terjadi kesalahan saat menghapus hasil: ' + error.message);
             }
         }
+        */
 
         // Function to shuffle an array
         function shuffleArray(array) {
@@ -417,7 +394,7 @@ try {
                 fetchAndDisplayResults(true); // Always shuffle on auto-refresh
             }, intervalSeconds * 1000);
             isAutoRefreshActive = true;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.innerHTML = '<i class="fas fa-stop"></i>'; // Ubah teks tombol menjadi ikon stop
             refreshResultsBtn.classList.remove('refresh-btn'); // Hapus warna orange
             refreshResultsBtn.classList.add('back-btn'); // Ganti dengan warna biru (atau warna lain yang sesuai)
             console.log(`Auto-refresh started every ${intervalSeconds} seconds.`);
@@ -429,7 +406,7 @@ try {
                 refreshIntervalId = null;
             }
             isAutoRefreshActive = false;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt"></i>'; // Ubah teks tombol menjadi ikon refresh
             refreshResultsBtn.classList.remove('back-btn'); // Hapus warna biru
             refreshResultsBtn.classList.add('refresh-btn'); // Ganti dengan warna orange
             console.log("Auto-refresh stopped.");

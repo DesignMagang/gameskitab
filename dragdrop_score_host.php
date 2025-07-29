@@ -151,7 +151,7 @@ if (in_array('Final_Score', $available_rounds)) {
             background-color: rgba(30, 41, 59, 0.7); /* Darker, semi-transparent */
             border: 1px solid #475569; /* slate-600 */
             color: #e2e8f0;
-            padding: 0.5rem 1rem;
+            padding: 0.625rem 1.25rem; /* Slightly more padding for better appearance */
             border-radius: 0.375rem;
             font-size: 1rem;
             cursor: pointer;
@@ -159,8 +159,66 @@ if (in_array('Final_Score', $available_rounds)) {
             appearance: none; /* Remove default select arrow */
             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e2e8f0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.5%2074.5a17.6%2017.6%200%200%200-25.3%2024.7l130.8%20129.8c3.4%203.4%207.8%205.1%2012.3%205.1s8.9-1.7%2012.3-5.1L287%2094.1a17.6%2017.6%200%200%200%200-24.7z%22%2F%3E%3C%2Fsvg%3E');
             background-repeat: no-repeat;
-            background-position: right 0.7em top 50%, 0 0;
+            background-position: right 0.8em center, 0 0; /* Centered vertically, slightly more from right */
             background-size: 0.65em auto, 100%;
+            min-width: 150px; /* Ensure a minimum width for consistency */
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .round-selector:hover {
+            border-color: #64748b; /* slate-500 on hover */
+        }
+        .round-selector:focus {
+            border-color: #3b82f6; /* Blue-500 on focus */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Blue glow on focus */
+        }
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .modal-buttons button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .modal-buttons .confirm-btn {
+            background-color: #ef4444; /* Red-500 */
+            color: white;
+        }
+        .modal-buttons .confirm-btn:hover {
+            background-color: #dc2626; /* Red-600 */
+        }
+        .modal-buttons .cancel-btn {
+            background-color: #475569; /* Slate-600 */
+            color: white;
+        }
+        .modal-buttons .cancel-btn:hover {
+            background-color: #334155; /* Slate-700 */
         }
     </style>
 </head>
@@ -180,7 +238,6 @@ if (in_array('Final_Score', $available_rounds)) {
                 <h2 class="text-2xl font-bold text-white" id="mainTableTitle"></h2>
                 
                 <div class="round-selector-container">
-                    <!-- <label for="roundSelect" class="text-slate-300 font-medium">Pilih Ronde:</label> -->
                     <select id="roundSelect" class="round-selector">
                         <?php if (empty($available_rounds)): ?>
                             <option value="">Tidak ada ronde tersedia</option>
@@ -201,8 +258,8 @@ if (in_array('Final_Score', $available_rounds)) {
                 </div>
 
                 <div class="flex space-x-3">
-                    <button id="refreshResultsBtn" class="py-2 px-4 refresh-btn text-white font-semibold rounded-lg flex items-center">
-                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    <button id="refreshResultsBtn" class="py-2 px-4 refresh-btn text-white font-semibold rounded-lg flex items-center justify-center w-12 h-12">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                     <button onclick="window.location.href='index.php'" class="py-2 px-4 back-btn text-white font-semibold rounded-lg">
                         <i class="fas fa-home mr-2"></i> 
@@ -224,6 +281,17 @@ if (in_array('Final_Score', $available_rounds)) {
         </div>
     </div>
 
+    <div id="deleteModal" class="modal hidden">
+        <div class="modal-content">
+            <p class="text-lg font-semibold text-white mb-4">Konfirmasi Hapus</p>
+            <p class="text-slate-300">Apakah Anda yakin ingin menghapus hasil ini?</p>
+            <div class="modal-buttons">
+                <button id="confirmDeleteBtn" class="confirm-btn">Ya, Hapus</button>
+                <button id="cancelDeleteBtn" class="cancel-btn">Batal</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const sessionId = "<?= $sessionId ?>";
         const roundSelect = document.getElementById('roundSelect');
@@ -232,9 +300,13 @@ if (in_array('Final_Score', $available_rounds)) {
         const noResultsMessage = document.getElementById('noResultsMessage');
         const refreshResultsBtn = document.getElementById('refreshResultsBtn');
         const mainTableTitle = document.getElementById('mainTableTitle');
+        const deleteModal = document.getElementById('deleteModal');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 
         let refreshIntervalId; // To store the interval ID for auto-refresh
         let isAutoRefreshActive = false; // Default: mati
+        let currentResultIdToDelete = null; // To store the ID of the result to be deleted
 
         // Function to format time from seconds to MM:SS
         function formatTime(seconds) {
@@ -331,10 +403,8 @@ if (in_array('Final_Score', $available_rounds)) {
                         // Add event listeners for all delete buttons after all tables are rendered
                         document.querySelectorAll('.delete-btn').forEach(button => {
                             button.addEventListener('click', (event) => {
-                                const resultId = event.currentTarget.dataset.id;
-                                if (confirm('Apakah Anda yakin ingin menghapus hasil ini?')) {
-                                    deleteResult(resultId, selectedRound);
-                                }
+                                currentResultIdToDelete = event.currentTarget.dataset.id;
+                                deleteModal.classList.remove('hidden');
                             });
                         });
 
@@ -364,7 +434,7 @@ if (in_array('Final_Score', $available_rounds)) {
                 const data = await response.json();
 
                 if (data.success) {
-                    alert('Hasil berhasil dihapus!');
+                    // alert('Hasil berhasil dihapus!'); // Removed the alert as per request
                     fetchAndDisplayResults(currentRound, false); // Refresh results after deletion for the current round
                 } else {
                     alert('Gagal menghapus hasil: ' + data.message);
@@ -392,7 +462,7 @@ if (in_array('Final_Score', $available_rounds)) {
                 fetchAndDisplayResults(roundSelect.value, true); // Always shuffle on auto-refresh
             }, intervalSeconds * 1000);
             isAutoRefreshActive = true;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.innerHTML = '<i class="fas fa-stop"></i>'; // Ubah teks tombol menjadi ikon stop
             refreshResultsBtn.classList.remove('refresh-btn'); // Hapus warna orange
             refreshResultsBtn.classList.add('back-btn'); // Ganti dengan warna biru (atau warna lain yang sesuai)
             console.log(`Auto-refresh started every ${intervalSeconds} seconds.`);
@@ -404,11 +474,25 @@ if (in_array('Final_Score', $available_rounds)) {
                 refreshIntervalId = null;
             }
             isAutoRefreshActive = false;
-            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Auto-Refresh'; // Ubah teks tombol
+            refreshResultsBtn.innerHTML = '<i class="fas fa-sync-alt"></i>'; // Ubah teks tombol menjadi ikon refresh
             refreshResultsBtn.classList.remove('back-btn'); // Hapus warna biru
             refreshResultsBtn.classList.add('refresh-btn'); // Ganti dengan warna orange
             console.log("Auto-refresh stopped.");
         }
+
+        // Event listeners for the modal buttons
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (currentResultIdToDelete) {
+                deleteResult(currentResultIdToDelete, roundSelect.value);
+                currentResultIdToDelete = null; // Clear the stored ID
+            }
+            deleteModal.classList.add('hidden');
+        });
+
+        cancelDeleteBtn.addEventListener('click', () => {
+            currentResultIdToDelete = null; // Clear the stored ID
+            deleteModal.classList.add('hidden');
+        });
 
         // Initial load of results and event listeners
         document.addEventListener('DOMContentLoaded', () => {
