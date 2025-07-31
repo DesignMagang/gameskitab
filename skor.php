@@ -1,19 +1,23 @@
 <?php
 session_start();
 
+// Pastikan pengguna sudah login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
-include 'db.php';
+// Sertakan file koneksi database
+include 'db.php'; // Pastikan file db.php Anda sudah benar
 
+// Ambil username dari database
 $stmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 
+// Jika username tidak ditemukan, paksa logout
 if (!$user) {
     session_destroy();
     header("Location: login.php");
@@ -22,78 +26,109 @@ if (!$user) {
 
 $username = htmlspecialchars($user['username']);
 
-// Konfigurasi poin default
+// Konfigurasi poin default dari session atau nilai awal
 $poin_dasar = isset($_SESSION['poin_dasar']) ? $_SESSION['poin_dasar'] : 10;
 $poin_bonus = isset($_SESSION['poin_bonus']) ? $_SESSION['poin_bonus'] : 5;
 $poin_penalti = isset($_SESSION['poin_penalti']) ? $_SESSION['poin_penalti'] : 2;
 
+// Proses update pengaturan poin
 if (isset($_POST['update_poin'])) {
-    $_SESSION['poin_dasar'] = max(1, (int)$_POST['poin_dasar']); // Ensure minimum 1
+    $_SESSION['poin_dasar'] = max(1, (int)$_POST['poin_dasar']); // Pastikan minimal 1
     $_SESSION['poin_bonus'] = max(0, (int)$_POST['poin_bonus']);
     $_SESSION['poin_penalti'] = max(0, (int)$_POST['poin_penalti']);
     
-    // No success message needed for point configuration update based on your request.
+    // Redirect untuk menghindari resubmission form
     header("Location: skor.php");
     exit();
 }
 
-// Variable to store winner info for the animation
+// Variabel untuk menyimpan info pemenang (untuk animasi modal)
 $winner_info = null;
 
+// Proses submit skor pertandingan
 if (isset($_POST['submit_skor'])) {
-    $kelompok1 = trim($_POST['kelompok1']);
-    $skor1 = max(0, (int)$_POST['skor1']);
-    $kelompok2 = trim($_POST['kelompok2']);
-    $skor2 = max(0, (int)$_POST['skor2']);
+    $team_data = [];
+    // Loop untuk 4 tim (termasuk yang mungkin tersembunyi)
+    for ($i = 1; $i <= 4; $i++) {
+        // Ambil nilai nama dan skor, pastikan default jika kosong atau tidak ada
+        $kelompok_name_post = isset($_POST['kelompok_' . $i]) ? trim($_POST['kelompok_' . $i]) : '';
+        $skor_post = isset($_POST['skor_' . $i]) ? max(0, (int)$_POST['skor_' . $i]) : 0;
+
+        // Simpan data tim, termasuk tim yang namanya kosong (untuk konsistensi database)
+        $team_data[$i] = ['name' => $kelompok_name_post, 'score' => $skor_post];
+    }
+
+    // Tentukan pemenang dari tim yang memiliki nama (tidak kosong)
+    $max_score = -1;
+    $winning_teams = [];
+    foreach ($team_data as $team_num => $team) {
+        if (!empty($team['name'])) { // Hanya pertimbangkan tim yang namanya diisi
+            if ($team['score'] > $max_score) {
+                $max_score = $team['score'];
+                $winning_teams = [$team['name']];
+            } elseif ($team['score'] == $max_score && $max_score != -1) {
+                $winning_teams[] = $team['name'];
+            }
+        }
+    }
+
+    $winner_name = (count($winning_teams) > 1) ? 'Seri' : (empty($winning_teams) ? 'N/A' : $winning_teams[0]);
+    $winner_info = ['name' => $winner_name, 'score' => $max_score];
+
+    // Persiapkan dan eksekusi pernyataan INSERT untuk semua 4 tim
+    $stmt = $conn->prepare("INSERT INTO skor_pertandingan (user_id, nama_kelompok1, skor_kelompok1, nama_kelompok2, skor_kelompok2, nama_kelompok3, skor_kelompok3, nama_kelompok4, skor_kelompok4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("isisiisii", 
+        $_SESSION['user_id'], 
+        $team_data[1]['name'], $team_data[1]['score'],
+        $team_data[2]['name'], $team_data[2]['score'],
+        $team_data[3]['name'], $team_data[3]['score'],
+        $team_data[4]['name'], $team_data[4]['score']
+    );
     
-    // Basic validation
-    if (empty($kelompok1) || empty($kelompok2)) {
-        $_SESSION['error'] = "Nama kelompok tidak boleh kosong.";
+    // Eksekusi statement dan tangani error jika ada
+    if (!$stmt->execute()) {
+        // Anda bisa log error ini atau menampilkannya untuk debugging
+        // error_log("Database Error: " . $stmt->error); 
+        // Anda juga bisa mengarahkan pengguna ke halaman error atau menampilkan pesan yang lebih user-friendly
+        $_SESSION['error'] = "Terjadi kesalahan saat menyimpan skor: " . $stmt->error;
         header("Location: skor.php");
         exit();
     }
-
-    $stmt = $conn->prepare("INSERT INTO skor_pertandingan (user_id, nama_kelompok1, skor_kelompok1, nama_kelompok2, skor_kelompok2) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("isisi", $_SESSION['user_id'], $kelompok1, $skor1, $kelompok2, $skor2);
-    $stmt->execute();
+    $stmt->close(); // Tutup statement setelah eksekusi
     
-    // Determine winner for animation
-    if ($skor1 > $skor2) {
-        $winner_info = ['name' => $kelompok1, 'score' => $skor1];
-    } elseif ($skor2 > $skor1) {
-        $winner_info = ['name' => $kelompok2, 'score' => $skor2];
-    } else {
-        $winner_info = ['name' => 'Seri', 'score' => max($skor1, $skor2)]; // For a draw
-    }
-
-    // Instead of redirecting with session success, we'll pass winner info via query param
-    // This allows the JS to pick it up and trigger the animation on page load.
-    // We encode it to handle special characters in team names
+    // Redirect dengan parameter pemenang untuk menampilkan modal
     header("Location: skor.php?winner=" . urlencode(json_encode($winner_info)));
     exit();
 }
 
-// Check for winner info from URL
+// Cek parameter pemenang dari URL untuk menampilkan modal
 if (isset($_GET['winner'])) {
     $winner_info = json_decode(urldecode($_GET['winner']), true);
-    // Remove the query parameter after processing to prevent re-triggering
     echo "<script>
             window.onload = function() {
+                // Hapus parameter winner dari URL setelah modal ditampilkan
                 if (history.replaceState) {
                     var url = new URL(window.location.href);
                     url.searchParams.delete('winner');
                     history.replaceState(null, null, url.toString());
                 }
                 showWinnerModal(" . json_encode($winner_info['name']) . ");
+                // Pastikan status tim dimuat setelah logika modal
+                loadTeamVisibility();
+            };
+          </script>";
+} else {
+    // Jika tidak ada parameter winner, muat visibilitas tim saat halaman dimuat
+    echo "<script>
+            window.onload = function() {
+                loadTeamVisibility();
             };
           </script>";
 }
 
-
-$riwayat_skor = $conn->prepare("SELECT * FROM skor_pertandingan WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-$riwayat_skor->bind_param("i", $_SESSION['user_id']);
-$riwayat_skor->execute();
-$riwayat_data = $riwayat_skor->get_result();
+// **CATATAN**: Bagian untuk mengambil riwayat skor telah DIHAPUS.
+// $riwayat_skor = $conn->prepare("SELECT ...");
+// ...
 ?>
 
 <!DOCTYPE html>
@@ -103,7 +138,7 @@ $riwayat_data = $riwayat_skor->get_result();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Score Board - Game Alkitab</title>
     <script src="https://cdn.tailwindcss.com"></script>
-        <link rel="icon" href="logo.png" type="image/png">
+    <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;600&display=swap');
@@ -134,8 +169,8 @@ $riwayat_data = $riwayat_skor->get_result();
         
         .score-input {
             -moz-appearance: textfield;
-            text-align: center; /* Center the score for better readability */
-            font-size: 1.5rem; /* Larger font for scores */
+            text-align: center;
+            font-size: 1.5rem;
             font-weight: bold;
         }
         
@@ -289,48 +324,45 @@ $riwayat_data = $riwayat_skor->get_result();
             </h1>
             
             <form method="post">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div id="teamsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <div class="team-card bg-gradient-to-br from-blue-800/70 to-blue-900/80 p-6 rounded-xl">
                         <h2 class="text-xl font-semibold mb-4 flex items-center">
                             <i class="fas fa-users mr-2 text-blue-300"></i>
                             Team 1
                         </h2>
-                        
                         <div class="mb-4">
                             <label class="block mb-2 font-medium">Team Name:</label>
-                            <input type="text" name="kelompok1" required 
+                            <input type="text" name="kelompok_1" required 
                                    class="w-full p-3 rounded-lg bg-gray-800/50 border border-gray-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50"
                                    placeholder="Enter team name">
                         </div>
-                        
                         <div class="mb-4">
                             <label class="block mb-2 font-medium">Score:</label>
                             <div class="flex items-center mb-3">
-                                <button type="button" onclick="updateScore('skor1', -<?= $poin_dasar ?>)" 
+                                <button type="button" onclick="updateScore('skor_1', -<?= $poin_dasar ?>)" 
                                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-l-lg font-bold transition">
                                     -<?= $poin_dasar ?>
                                 </button>
-                                <input type="number" name="skor1" id="skor1" value="0" min="0" readonly
+                                <input type="number" name="skor_1" id="skor_1" value="0" min="0" readonly
                                        class="score-input w-full p-3 bg-gray-800/70 border-t border-b border-gray-700 text-center text-xl font-bold">
-                                <button type="button" onclick="updateScore('skor1', <?= $poin_dasar ?>)" 
+                                <button type="button" onclick="updateScore('skor_1', <?= $poin_dasar ?>)" 
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-r-lg font-bold transition">
                                     +<?= $poin_dasar ?>
                                 </button>
                             </div>
                         </div>
-                        
                         <div class="flex justify-between space-x-2 mb-4">
-                            <button type="button" onclick="updateScore('skor1', <?= $poin_bonus ?>)" 
+                            <button type="button" onclick="updateScore('skor_1', <?= $poin_bonus ?>)" 
                                     class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
                                 <i class="fas fa-plus-circle mr-2"></i> Bonus (+<?= $poin_bonus ?>)
                             </button>
-                            <button type="button" onclick="updateScore('skor1', -<?= $poin_penalti ?>)" 
+                            <button type="button" onclick="updateScore('skor_1', -<?= $poin_penalti ?>)" 
                                     class="w-1/2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
                                 <i class="fas fa-exclamation-triangle mr-2"></i> Penalty (-<?= $poin_penalti ?>)
                             </button>
                         </div>
-                         <div class="text-center">
-                            <button type="button" onclick="resetScore('skor1')" 
+                        <div class="text-center">
+                            <button type="button" onclick="resetScore('skor_1')" 
                                     class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
                                 <i class="fas fa-redo-alt mr-1"></i> Reset Score
                             </button>
@@ -342,42 +374,133 @@ $riwayat_data = $riwayat_skor->get_result();
                             <i class="fas fa-users mr-2 text-indigo-300"></i>
                             Team 2
                         </h2>
-                        
                         <div class="mb-4">
                             <label class="block mb-2 font-medium">Team Name:</label>
-                            <input type="text" name="kelompok2" required 
+                            <input type="text" name="kelompok_2" required 
                                    class="w-full p-3 rounded-lg bg-gray-800/50 border border-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50"
                                    placeholder="Enter team name">
                         </div>
-                        
                         <div class="mb-4">
                             <label class="block mb-2 font-medium">Score:</label>
                             <div class="flex items-center mb-3">
-                                <button type="button" onclick="updateScore('skor2', -<?= $poin_dasar ?>)" 
+                                <button type="button" onclick="updateScore('skor_2', -<?= $poin_dasar ?>)" 
                                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-l-lg font-bold transition">
                                     -<?= $poin_dasar ?>
                                 </button>
-                                <input type="number" name="skor2" id="skor2" value="0" min="0" readonly
+                                <input type="number" name="skor_2" id="skor_2" value="0" min="0" readonly
                                        class="score-input w-full p-3 bg-gray-800/70 border-t border-b border-gray-700 text-center text-xl font-bold">
-                                <button type="button" onclick="updateScore('skor2', <?= $poin_dasar ?>)" 
+                                <button type="button" onclick="updateScore('skor_2', <?= $poin_dasar ?>)" 
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-r-lg font-bold transition">
                                     +<?= $poin_dasar ?>
                                 </button>
                             </div>
                         </div>
-                        
                         <div class="flex justify-between space-x-2 mb-4">
-                            <button type="button" onclick="updateScore('skor2', <?= $poin_bonus ?>)" 
+                            <button type="button" onclick="updateScore('skor_2', <?= $poin_bonus ?>)" 
                                     class="w-1/2 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
                                 <i class="fas fa-plus-circle mr-2"></i> Bonus (+<?= $poin_bonus ?>)
                             </button>
-                            <button type="button" onclick="updateScore('skor2', -<?= $poin_penalti ?>)" 
+                            <button type="button" onclick="updateScore('skor_2', -<?= $poin_penalti ?>)" 
                                     class="w-1/2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
                                 <i class="fas fa-exclamation-triangle mr-2"></i> Penalty (-<?= $poin_penalti ?>)
                             </button>
                         </div>
-                         <div class="text-center">
-                            <button type="button" onclick="resetScore('skor2')" 
+                        <div class="text-center">
+                            <button type="button" onclick="resetScore('skor_2')" 
+                                    class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
+                                <i class="fas fa-redo-alt mr-1"></i> Reset Score
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="team3Container" class="team-card bg-gradient-to-br from-purple-800/70 to-purple-900/80 p-6 rounded-xl hidden relative">
+                        <button type="button" onclick="hideTeam(3)" class="absolute top-3 right-3 text-white text-lg bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-users mr-2 text-purple-300"></i>
+                            Team 3
+                        </h2>
+                        <div class="mb-4">
+                            <label class="block mb-2 font-medium">Team Name:</label>
+                            <input type="text" name="kelompok_3" 
+                                   class="w-full p-3 rounded-lg bg-gray-800/50 border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50"
+                                   placeholder="Enter team name">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block mb-2 font-medium">Score:</label>
+                            <div class="flex items-center mb-3">
+                                <button type="button" onclick="updateScore('skor_3', -<?= $poin_dasar ?>)" 
+                                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-l-lg font-bold transition">
+                                    -<?= $poin_dasar ?>
+                                </button>
+                                <input type="number" name="skor_3" id="skor_3" value="0" min="0" readonly
+                                       class="score-input w-full p-3 bg-gray-800/70 border-t border-b border-gray-700 text-center text-xl font-bold">
+                                <button type="button" onclick="updateScore('skor_3', <?= $poin_dasar ?>)" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-r-lg font-bold transition">
+                                    +<?= $poin_dasar ?>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between space-x-2 mb-4">
+                            <button type="button" onclick="updateScore('skor_3', <?= $poin_bonus ?>)" 
+                                    class="w-1/2 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
+                                <i class="fas fa-plus-circle mr-2"></i> Bonus (+<?= $poin_bonus ?>)
+                            </button>
+                            <button type="button" onclick="updateScore('skor_3', -<?= $poin_penalti ?>)" 
+                                    class="w-1/2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
+                                <i class="fas fa-exclamation-triangle mr-2"></i> Penalty (-<?= $poin_penalti ?>)
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <button type="button" onclick="resetScore('skor_3')" 
+                                    class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
+                                <i class="fas fa-redo-alt mr-1"></i> Reset Score
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="team4Container" class="team-card bg-gradient-to-br from-teal-800/70 to-teal-900/80 p-6 rounded-xl hidden relative">
+                        <button type="button" onclick="hideTeam(4)" class="absolute top-3 right-3 text-white text-lg bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-users mr-2 text-teal-300"></i>
+                            Team 4
+                        </h2>
+                        <div class="mb-4">
+                            <label class="block mb-2 font-medium">Team Name:</label>
+                            <input type="text" name="kelompok_4" 
+                                   class="w-full p-3 rounded-lg bg-gray-800/50 border border-gray-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50"
+                                   placeholder="Enter team name">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block mb-2 font-medium">Score:</label>
+                            <div class="flex items-center mb-3">
+                                <button type="button" onclick="updateScore('skor_4', -<?= $poin_dasar ?>)" 
+                                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-l-lg font-bold transition">
+                                    -<?= $poin_dasar ?>
+                                </button>
+                                <input type="number" name="skor_4" id="skor_4" value="0" min="0" readonly
+                                       class="score-input w-full p-3 bg-gray-800/70 border-t border-b border-gray-700 text-center text-xl font-bold">
+                                <button type="button" onclick="updateScore('skor_4', <?= $poin_dasar ?>)" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-r-lg font-bold transition">
+                                    +<?= $poin_dasar ?>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between space-x-2 mb-4">
+                            <button type="button" onclick="updateScore('skor_4', <?= $poin_bonus ?>)" 
+                                    class="w-1/2 bg-teal-500 hover:bg-teal-600 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
+                                <i class="fas fa-plus-circle mr-2"></i> Bonus (+<?= $poin_bonus ?>)
+                            </button>
+                            <button type="button" onclick="updateScore('skor_4', -<?= $poin_penalti ?>)" 
+                                    class="w-1/2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center">
+                                <i class="fas fa-exclamation-triangle mr-2"></i> Penalty (-<?= $poin_penalti ?>)
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <button type="button" onclick="resetScore('skor_4')" 
                                     class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
                                 <i class="fas fa-redo-alt mr-1"></i> Reset Score
                             </button>
@@ -385,6 +508,13 @@ $riwayat_data = $riwayat_skor->get_result();
                     </div>
                 </div>
                 
+                <div class="text-center mb-8" id="toggleButtonContainer">
+                    <button type="button" id="toggleTeamButton" onclick="showNextTeam()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center mx-auto shadow-md hover:shadow-xl">
+                        <i class="fas fa-plus-circle mr-2"></i> Add More Teams (Max 4)
+                    </button>
+                </div>
+
                 <div class="text-center">
                     <button type="submit" name="submit_skor" 
                             class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition shadow-lg hover:shadow-xl">
@@ -393,68 +523,7 @@ $riwayat_data = $riwayat_skor->get_result();
                 </div>
             </form>
             
-            <div class="mt-12">
-                <h2 class="text-2xl font-bold mb-6 text-center title-font text-yellow-400">
-                    <i class="fas fa-history mr-3"></i>
-                    Recent Games
-                </h2>
-                
-                <?php if ($riwayat_data->num_rows > 0): ?>
-                    <div class="overflow-x-auto rounded-xl bg-gray-800/30 backdrop-blur-sm">
-                        <table class="w-full">
-                            <thead class="bg-gray-700/50">
-                                <tr>
-                                    <th class="p-4 text-left">Date</th>
-                                    <th class="p-4 text-left">Team 1</th>
-                                    <th class="p-4 text-center">Score</th>
-                                    <th class="p-4 text-left">Team 2</th>
-                                    <th class="p-4 text-center">Score</th>
-                                    <th class="p-4 text-center">Result</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($row = $riwayat_data->fetch_assoc()): 
-                                    $winner_team = '';
-                                    $winner_class = '';
-                                    if ($row['skor_kelompok1'] > $row['skor_kelompok2']) {
-                                        $winner_team = htmlspecialchars($row['nama_kelompok1']) . ' Wins!';
-                                        $winner_class = 'bg-green-600/30 text-green-300 winner-badge';
-                                    } elseif ($row['skor_kelompok2'] > $row['skor_kelompok1']) {
-                                        $winner_team = htmlspecialchars($row['nama_kelompok2']) . ' Wins!';
-                                        $winner_class = 'bg-green-600/30 text-green-300 winner-badge';
-                                    } else {
-                                        $winner_team = 'Draw';
-                                        $winner_class = 'bg-yellow-600/30 text-yellow-300';
-                                    }
-                                ?>
-                                    <tr class="border-b border-gray-700/50 hover:bg-gray-700/20">
-                                        <td class="p-4"><?= date('d M H:i', strtotime($row['created_at'])) ?></td>
-                                        <td class="p-4"><?= htmlspecialchars($row['nama_kelompok1']) ?></td>
-                                        <td class="p-4 text-center font-bold <?= $row['skor_kelompok1'] > $row['skor_kelompok2'] ? 'text-green-400' : '' ?>">
-                                            <?= $row['skor_kelompok1'] ?>
-                                        </td>
-                                        <td class="p-4"><?= htmlspecialchars($row['nama_kelompok2']) ?></td>
-                                        <td class="p-4 text-center font-bold <?= $row['skor_kelompok2'] > $row['skor_kelompok1'] ? 'text-green-400' : '' ?>">
-                                            <?= $row['skor_kelompok2'] ?>
-                                        </td>
-                                        <td class="p-4 text-center">
-                                            <span class="<?= $winner_class ?> px-3 py-1 rounded-full text-sm font-bold">
-                                                <?= $winner_team ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="text-center py-8 bg-gray-800/30 rounded-xl">
-                        <i class="fas fa-info-circle text-2xl text-blue-400 mb-2"></i>
-                        <p class="text-gray-400">No game history yet</p>
-                    </div>
-                <?php endif; ?>
             </div>
-        </div>
     </main>
 
     <footer class="bg-black/30 py-6 mt-12 text-center text-sm text-gray-400">
@@ -481,10 +550,10 @@ $riwayat_data = $riwayat_skor->get_result();
         function updateScore(id, change) {
             const input = document.getElementById(id);
             let newValue = parseInt(input.value) + change;
-            newValue = Math.max(newValue, 0); // Ensure score doesn't go below zero
+            newValue = Math.max(newValue, 0); // Pastikan skor tidak kurang dari nol
             input.value = newValue;
             
-            // Add visual feedback (brief highlight)
+            // Tambahkan umpan balik visual (sorotan singkat)
             input.classList.add('transition', 'duration-100', 'ease-in-out', 'bg-blue-500/10');
             setTimeout(() => {
                 input.classList.remove('bg-blue-500/10');
@@ -493,7 +562,7 @@ $riwayat_data = $riwayat_skor->get_result();
 
         function resetScore(id) {
             document.getElementById(id).value = 0;
-            // Optional: Add a visual reset effect
+            // Opsi: Tambahkan efek reset visual
             const input = document.getElementById(id);
             input.classList.add('transition', 'duration-100', 'ease-in-out', 'bg-red-500/10');
             setTimeout(() => {
@@ -501,28 +570,109 @@ $riwayat_data = $riwayat_skor->get_result();
             }, 300);
         }
 
-        // --- Winner Modal Functions ---
+        // Muat status visibilitas untuk setiap tim dari localStorage
+        let team3Visible = localStorage.getItem('team3Visible') === 'true';
+        let team4Visible = localStorage.getItem('team4Visible') === 'true';
+
+        function updateToggleButtonState() {
+            const toggleButton = document.getElementById('toggleTeamButton');
+            const toggleButtonContainer = document.getElementById('toggleButtonContainer');
+
+            if (team3Visible && team4Visible) {
+                // Semua tim terlihat, sembunyikan tombol "Add More Teams" global
+                toggleButtonContainer.classList.add('hidden');
+            } else if (team3Visible) {
+                // Tim 3 terlihat, Tim 4 tersembunyi
+                toggleButton.innerHTML = '<i class="fas fa-plus-circle mr-2"></i> Add Team 4';
+                toggleButtonContainer.classList.remove('hidden');
+            } else {
+                // Hanya Tim 1 & 2 terlihat (atau tidak ada yang terlihat, status default)
+                toggleButton.innerHTML = '<i class="fas fa-plus-circle mr-2"></i> Add More Teams (Max 4)';
+                toggleButtonContainer.classList.remove('hidden');
+            }
+        }
+
+        function showNextTeam() {
+            const team3 = document.getElementById('team3Container');
+            const team4 = document.getElementById('team4Container');
+
+            if (!team3Visible) {
+                team3.classList.remove('hidden');
+                team3Visible = true;
+                localStorage.setItem('team3Visible', 'true');
+            } else if (!team4Visible) {
+                team4.classList.remove('hidden');
+                team4Visible = true;
+                localStorage.setItem('team4Visible', 'true');
+            }
+            updateToggleButtonState();
+        }
+
+        function hideTeam(teamNumber) {
+            const teamElement = document.getElementById('team' + teamNumber + 'Container');
+            const teamNameInput = document.querySelector('input[name="kelompok_' + teamNumber + '"]');
+            const teamScoreInput = document.getElementById('skor_' + teamNumber);
+
+            if (teamElement) {
+                teamElement.classList.add('hidden');
+                // Reset nilai input untuk mencegah pengiriman data tim yang tersembunyi
+                if (teamNameInput) teamNameInput.value = '';
+                if (teamScoreInput) teamScoreInput.value = 0;
+
+                if (teamNumber === 3) {
+                    team3Visible = false;
+                    localStorage.setItem('team3Visible', 'false');
+                } else if (teamNumber === 4) {
+                    team4Visible = false;
+                    localStorage.setItem('team4Visible', 'false');
+                }
+                updateToggleButtonState(); // Perbarui status tombol global
+            }
+        }
+
+        function loadTeamVisibility() {
+            const team3 = document.getElementById('team3Container');
+            const team4 = document.getElementById('team4Container');
+
+            if (team3Visible) {
+                team3.classList.remove('hidden');
+            } else {
+                team3.classList.add('hidden');
+            }
+
+            if (team4Visible) {
+                team4.classList.remove('hidden');
+            } else {
+                team4.classList.add('hidden');
+            }
+            updateToggleButtonState(); // Atur status tombol awal saat dimuat
+        }
+
+
+        // --- Fungsi Modal Pemenang ---
         function showWinnerModal(winnerName) {
             const modal = document.getElementById('winnerModal');
             const winnerMessage = document.getElementById('winnerMessage');
             
             if (winnerName === 'Seri') {
                 winnerMessage.innerHTML = `Pertandingan berakhir <span class="text-yellow-300">SERI!</span><br>Hebat sekali!`;
+            } else if (winnerName === 'N/A') { // Tangani kasus di mana tidak ada tim yang diisi
+                 winnerMessage.innerHTML = `Tidak ada tim yang diisi untuk menentukan pemenang.`;
             } else {
                 winnerMessage.innerHTML = `Selamat kepada <span class="text-yellow-300">${winnerName}</span> yang telah berhasil memenangkan game ini!`;
             }
 
             modal.classList.add('show');
-            playConfetti(); // Trigger confetti animation
+            playConfetti(); // Picu animasi confetti
         }
 
         function closeWinnerModal() {
             const modal = document.getElementById('winnerModal');
             modal.classList.remove('show');
-            clearConfetti(); // Clear confetti when modal closes
+            clearConfetti(); // Bersihkan confetti saat modal ditutup
         }
 
-        // --- Confetti Animation Functions ---
+        // --- Fungsi Animasi Confetti ---
         const confettiColors = ['#FFC107', '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39'];
         const confettiElements = [];
 
@@ -533,13 +683,13 @@ $riwayat_data = $riwayat_skor->get_result();
             confetti.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
             confetti.style.width = Math.random() * 8 + 5 + 'px';
             confetti.style.height = confetti.style.width;
-            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's'; // 2-4 seconds
-            confetti.style.animationDelay = (Math.random() * 0.5) + 's'; // Slight delay for spread
-            confetti.style.transform = `translateY(-10vh) rotate(${Math.random() * 360}deg)`; // Initial random position and rotation
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's'; // 2-4 detik
+            confetti.style.animationDelay = (Math.random() * 0.5) + 's'; // Sedikit delay untuk penyebaran
+            confetti.style.transform = `translateY(-10vh) rotate(${Math.random() * 360}deg)`; // Posisi dan rotasi awal acak
             document.body.appendChild(confetti);
             confettiElements.push(confetti);
 
-            // Remove confetti after animation to prevent DOM bloat
+            // Hapus confetti setelah animasi selesai untuk mencegah bloat DOM
             confetti.addEventListener('animationend', () => {
                 confetti.remove();
                 confettiElements.splice(confettiElements.indexOf(confetti), 1);
@@ -547,27 +697,24 @@ $riwayat_data = $riwayat_skor->get_result();
         }
 
         function playConfetti() {
-            for (let i = 0; i < 100; i++) { // Generate 100 pieces of confetti
+            for (let i = 0; i < 100; i++) { // Hasilkan 100 buah confetti
                 createConfetti();
             }
         }
 
         function clearConfetti() {
             confettiElements.forEach(confetti => confetti.remove());
-            confettiElements.length = 0; // Clear the array
+            confettiElements.length = 0; // Bersihkan array
         }
 
-        // Check if there's a winner to show modal on page load
+        // Panggil loadTeamVisibility saat halaman dimuat (setelah modal pemenang atau langsung)
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('winner')) {
-                const winnerInfoJson = urlParams.get('winner');
-                try {
-                    const winnerInfo = JSON.parse(decodeURIComponent(winnerInfoJson));
-                    showWinnerModal(winnerInfo.name);
-                } catch (e) {
-                    console.error("Error parsing winner info:", e);
-                }
+                // Logika pemenang sudah memanggil loadTeamVisibility di window.onload (di PHP)
+                // Jadi tidak perlu dipanggil di sini lagi jika ada parameter winner
+            } else {
+                loadTeamVisibility(); // Hanya panggil di sini jika tidak ditangani oleh modal pemenang
             }
         });
     </script>
