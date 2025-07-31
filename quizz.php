@@ -356,6 +356,7 @@ $playlist = $conn->query("SELECT * FROM background_music WHERE is_active = 1 ORD
                                             class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300" title="Edit">
                                             <i class="fas fa-pen"></i>
                                     </button>
+                                    
                                     <form action="delete_quizz.php" method="POST" onsubmit="return confirm('Yakin ingin menghapus kuis ini?');"> <input type="hidden" name="quiz_id" value="<?= $row['id'] ?>">
                                         <button type="submit" class="text-red-400 hover:text-red-300 transition-colors duration-300" title="Hapus">
                                             <i class="fas fa-trash"></i>
